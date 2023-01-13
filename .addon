@@ -1,0 +1,32 @@
+{
+  "Title": "Map Parser",
+  "Type": "addon",
+  "Org": "sboxcommunity",
+  "Ident": "map_parser",
+  "Tags": "runtime entity",
+  "Schema": 1,
+  "HasAssets": true,
+  "AssetsPath": "",
+  "ResourcePaths": [
+    "/shaders/*"
+  ],
+  "HasCode": true,
+  "CodePath": "/code/",
+  "Metadata": {
+    "PrimaryAsset": "MapParser.MPEntity",
+    "PhysicsMins": "-16,-16,-16",
+    "PhysicsMaxs": "16,16,16",
+    "RenderMins": "-16,-16,-16",
+    "RenderMaxs": "-16,-16,-16",
+    "ParentPackage": "facepunch.sandbox",
+    "Summary": "",
+    "Description": "",
+    "Public": false,
+    "ReplaceTags": "runtime entity",
+    "Compiler": {
+      "RootNamespace": "MapParser",
+      "DefineConstants": "SANDBOX;ADDON;DEBUG",
+      "NoWarn": "1701;1702;1591;"
+    }
+  }
+}

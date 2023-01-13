@@ -1,0 +1,102 @@
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using Sandbox.Diagnostics;
+@using System.Collections.Generic;
+@using System.Linq;
+@using System.Threading.Tasks;
+
+@namespace MapParser
+@inherits Panel
+
+<style>
+	Notification {
+		height: 3%;
+		min-height: 3%;
+		flex-shrink: 0;
+		margin: 5px 5px 0px 5px;
+		transition: all 0.3s ease-in-out, opacity 0.2s linear;
+		font-color:white;
+		font-family:Calibri;
+		left: -100%;
+		opacity:0;
+
+		&.Active{
+			left: 0%;
+			opacity:1;
+			sound-in: ui.popup.message.open;
+		}
+		&.ActiveWarning{
+			left: 0%;
+			opacity:1;
+			sound-in: ui.button.press;
+		}
+		.content{
+			margin: 0px 0px 0px 10px;
+			border-radius: 2px;
+			align-content:center;
+			align-items:center;
+			height: 100%;
+			padding: 10px;
+			background-color: rgba(0.1,0.1,0.1,0.8);
+			text-shadow: 0 0 2px #000000,0 0 1px rgba(1,1,1,1);
+		}
+}
+</style>
+
+<div class="content">
+
+	@switch (notifyType)
+	{
+		case (Notify.NotifyType.Info):
+			<i style="text-shadow: 0px 0px 2px black;font-color:#ffff99">info</i>
+			break;
+		case (Notify.NotifyType.Warning):
+			<i style="text-shadow: 0px 0px 2px black;font-color:orange">warning</i>
+			break;
+		case (Notify.NotifyType.Error):
+			<i style="text-shadow: 0px 0px 2px black;font-color:red">error</i>
+			break;
+		default:
+			<i>info</i>
+			break;
+	}
+	<span style="margin-left:5px;">@note</span>
+</div>
+
+@code
+{
+	public string note = "";
+	public Notify.NotifyType notifyType = 0;
+	public Notify.NotifySide notifySide = 0;
+	public override void Tick()
+	{
+		base.Tick();
+	}
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(note);
+	}
+	public void Start()
+	{
+		_ = MapParser.Util.Timer(1, () =>
+		{
+			if (this != null && this.IsValid())
+			{
+				AddClass(notifyType != Notify.NotifyType.Info ? "Active" : "ActiveWarning");
+			}
+		});
+	}
+	public void Remove()
+	{
+		RemoveClass("Active");
+		_ = MapParser.Util.Timer(100, () =>
+		{
+			if (this != null && this.IsValid())
+			{
+				this.Delete();
+				Notify.tryRemoveNotificationPanel();
+			}
+		});
+	}
+}

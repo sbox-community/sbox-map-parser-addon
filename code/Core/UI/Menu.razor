@@ -1,0 +1,603 @@
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using Sandbox.Diagnostics;
+@using System.Collections.Generic;
+@using System.Linq;
+@using System.Threading.Tasks;
+@using System.Text.Json;
+
+@namespace MapParser
+@inherits Panel
+
+<style>
+	
+	Menu {
+		width: 50%;
+		height: 50%;
+		left: 25.5%;
+		top: 25.5%;
+		position: absolute;
+		background-color: rgba(25, 25, 25, 255);
+		box-shadow: 0px 0px 25px 7px rgba(25, 25, 25, 0.9);
+		border-radius: 2px;
+		flex-direction: column;
+		flex-shrink: 3;
+		pointer-events: all;
+		font-family:Calibri;
+		transition: all 0.1s ease-in-out, opacity 0.2s linear;
+		transform: scale(0);
+
+		&.Open{
+			transition: all 0.25s ease-in-out;
+			transform: scale(1);
+		}
+		&.Close{
+			transition: all 0.4s ease-in-out;
+			transform: scale(0) rotateZ(100%);
+		}
+
+		&.Deactive{
+			transition: all 0.1s ease-in-out, background-color 0s ease;
+			box-shadow: none;
+			background-color: rgba(0,0,0,0);
+			sound-in: ui.popup.message.open;
+		}
+
+		.header {
+			height:5%;
+			max-height: 5%;
+			min-height: 5%;
+			border-radius: 3px;
+			flex-shrink:0;
+			overflow:visible;
+			opacity: 1;
+			&.Deactive{
+				border-radius: 2px;
+				box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
+				opacity:0.75;
+			}
+		}
+		.body {
+			background-color: #2b2b2b;
+			margin: 5px;
+			width: 99%;
+			height: 100%;
+			flex-direction: column;
+
+			.tabs {
+				background-color: #4b4b4b;
+				border-radius: 2px;
+				box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
+				margin-left: 10px;
+				margin-right: 10px;
+				margin-top: 10px;
+				width: 98%;
+				height: 8%;
+				align-items: center;
+				justify-content:space-around;//center
+
+				.tab_button
+				{
+					max-width:50%;
+					height:50%;
+					background-color:white;
+				}
+			}
+
+			.panel {
+				background-color: #4b4b4b;
+				border-radius: 2px;
+				box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
+				margin: 10px;
+				width: 98%;
+				height: 100%;
+
+				.tab_1 {
+					.list {
+						width: 30%;
+						max-width: 30%;
+						flex-shrink: 0;
+						align-items: stretch;
+						margin: 10px;
+						background: linear-gradient(to bottom, #6c6c6c, #a1a1a1);
+						overflow: scroll;
+						justify-content: flex-start;
+						flex-direction: column;
+						max-height: 100%;
+						border-radius: 2px;
+						box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
+
+						.listitem {
+							background: linear-gradient(to bottom, #3494e6, #ec6ead); 
+							//align-items: center;
+							width: 97%;
+							min-width:97%;
+							transition: transform 0.1s ease-in;
+							justify-content: space-between;
+							margin: 4px 4px 0px 4px;
+							max-height:8.5%;
+							min-height: 8.5%;
+							border-radius: 2px;
+							box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
+
+							&:hover{
+								background:none;
+								background-color: #bababa;
+							}
+							&.Active
+							{
+								background: none;
+								background-color: #c7c7c7;
+							}
+							.fav{
+							}
+							.thumb{
+								margin: 5 2 5 5;
+								width:24px;
+								height:24px;
+								background-repeat:no-repeat;
+								background-size:cover;
+								box-shadow: 0px 0px 10px 1px rgba(25, 25, 25, 0.9);
+							}
+							.info {
+								flex-grow:1;
+								flex-direction: column;
+								.title{
+									margin: 3 0 0 4;
+									font-size:14px;
+								}
+								.owner{
+									margin: 0 2 3 4;
+									font-size: 9px;
+								}
+							}
+							.rightinfo{
+								flex-direction:column;
+								justify-content: center;
+								align-content: center;
+								align-content: center;
+								align-items: center;
+								height: 100%;
+								min-width:10%;
+								max-width:10%;
+								width:10%;
+								align-self: flex-end;
+								padding-right:5px;
+								font-size:13px;
+							}
+						}
+					}
+					.infolist{
+						background: linear-gradient(to bottom, #6c6c6c, #a1a1a1);
+						border-radius: 2px;
+						box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
+						width:100%;
+						height:95%;
+						margin:10 10 5 5;
+
+						.infolist_info{
+							flex-direction: column;
+							align-content:center;
+							justify-content:center;
+							align-items:center;
+
+							.thumb{
+								margin: 0 0 5 0;
+								width:128px;
+								height: 128px;
+								background-repeat:no-repeat;
+								background-size:cover;
+								box-shadow: 0px 0px 10px 3px rgba(25, 25, 25, 0.9);
+							}
+							.title{
+								margin: 3 0 0 4;
+								font-size:20px;
+							}
+							.owner{
+								margin: 0 2 3 4;
+								font-size: 14px;
+							}
+							.maplist{
+								width: 30%;
+								max-width: 30%;
+								flex-shrink: 0;
+								align-items: stretch;
+								margin: 10px;
+								overflow: scroll;
+								justify-content: flex-start;
+								flex-direction: column;
+								max-height: 100%;
+
+								.maplistitem {
+									flex-shrink: 0;
+									flex-grow: 0;
+									//padding: 0;
+									background-color: purple;
+									//align-items: center;
+									width: 100%;
+									transition: transform 0.1s ease-in;
+									margin: 4 4 0 4;
+									min-height: 5%;
+						
+									.gamethumb{
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+</style>
+<div class="@toggleMenu"></div>
+<div class="header" @ref="header" style="justify-content:flex-end;align-items:center;">
+	<Button style="margin:5px;@(toggleMenu?"font-color:black;text-shadow:none":"font-color:purple;text-shadow:0 0 2px rgba(1,1,1,1);")" @onclick=@(() => toggleMenuHandler())>[ALT]</Button>
+	<div style="margin:10px;" @onclick=@(() => CloseMenu())><i>close</i></div>
+</div>
+<div @ref="body" class="body">
+	<div class="tabs">
+		<Button tooltip="Map Addons From Asset.Party" class="tab_button @(tab_1 != null && tab_1.IsValid() && tab_1.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_1))><i>border_clear</i> Map Addons </Button>
+		<Button tooltip="Currently Spawned Exists Maps" class="tab_button @(tab_2 != null && tab_2.IsValid() && tab_2.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_2))><i>storage</i> Active Maps </Button>
+		<Button tooltip="External Maps From FastDL Mirrors" class="tab_button @(tab_3 != null && tab_3.IsValid() && tab_3.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_3))><i>install_desktop</i> External Maps </Button>
+		<Button tooltip="Utilities For Debugging" class="tab_button @(tab_4 != null && tab_4.IsValid() && tab_4.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_4))><i>straighten</i> Utilities </Button>
+		<Button tooltip="Spawning Settings" class="tab_button @(tab_5 != null && tab_5.IsValid() && tab_5.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_5))><i>settings</i> Settings </Button>
+		<Button tooltip="Don't Hesitate :)" class="tab_button @(tab_6 != null && tab_6.IsValid() && tab_6.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_6))><i>question_mark</i> About </Button>
+	</div>
+	<div class="panel">
+		<div class="tab_1" @ref="tab_1">
+			<div class="list">
+				@if (Packages.Count() != 0 )
+				{
+					@foreach ( var package in Packages )
+					{
+						<span class="listitem @((activePackage != null && activePackage == package ) ? "Active" : "")" @onclick=@( () => retrievePackage( package ))>
+							<span class="thumb" style="background-image:url('@(package.Thumb.Contains("https") ? package.Thumb : "https://files.facepunch.com/sbox/asset/sboxcommunity.map_parser/logo.generated.png" )')"></span>
+							<span class="info">
+								<span class="title">@(package.Title.Replace("[MP]",""))</span>
+								<span class="owner">By @package.Org.Title</span>
+							</span>
+							<span class="rightinfo">
+								<span><i>show_chart</i>@package.UsersTotal</span>
+							</span>
+						</span>
+					}
+				}
+				@if (Packages.Count() == 0)
+				{
+					<Button style="width:97%;height:98%;justify-content:center;align-items:center;text-align:center;align-content:center;font-size:30;box-shadow:none;" tooltip="Refresh Addon List" @onclick=@(() => addonList())><i>refresh</i></Button>
+				}
+			</div>
+			<div class="infolist" style="justify-content:center;align-items:center;text-align:center;">
+				@if(activePackage == null)
+				{
+					<span class="noinfo" style="font-size:30px;text-shadow:0 0 1px rgba(50,50,50,0.1);">Welcome To Map Parser</span>
+				}
+				@if(activePackage != null)
+				{
+					<span class="infolist_info">
+						<span class="thumb" style="background-image:url('@(activePackage.Thumb.Contains("https") ? activePackage.Thumb : "https://files.facepunch.com/sbox/asset/sboxcommunity.map_parser/logo.generated.png" )')"></span>
+						<span class="title">@(activePackage.Title.Replace("[MP]",""))</span>
+						<span class="owner">By @activePackage.Org.Title</span>
+						@if (mapsOfActivePackage.Count() == 0)
+						{
+							<Button tooltip="Download and mount in order to get map list" @onclick=@(() => mountMap(activePackage))><i>cloud_download</i> Download & Mount </Button>
+						}
+						@if (mapsOfActivePackage.Count() != 0)
+						{
+							<MapList @ref="maplist"></MapList>
+							@if ( maplist.selectedPackage is not null )
+							{
+								<Button tooltip="Spawn From Asset.Party Package" @onclick=@(() => spawnMap(activePackage))><i>downloading</i> Spawn </Button>
+							}
+						}
+					</span>
+				}
+			</div>
+		</div>
+		<div style="display:none;flex-direction:column;" class="tab_2" @ref="tab_2">
+			<ActiveMapList style="top:10px;left:10px;" @ref="activemaplist"></ActiveMapList>
+			<div style="margin:20px;flex-direction:column;justify-content:center;width:98%;align-content:center;align-items:center">
+				@if (activemaplist.IsValid() && !string.IsNullOrEmpty(activemaplist.selectedMap.spawnParameter.mapName))
+				{
+					<span>Map Name: @activemaplist.selectedMap.spawnParameter.mapName</span>
+					<span>Full ident: @activemaplist.selectedMap.spawnParameter.packageFullIdent</span>
+					<span>Path: @activemaplist.selectedMap.spawnParameter.mapPath</span>
+					<span>Position: @activemaplist.selectedMap.spawnParameter.position</span>
+					<span>Wad List: @(string.Join(", ", (activemaplist.selectedMap.spawnParameter.wadList != null && activemaplist.selectedMap.spawnParameter.wadList.Count() != 0 ? PathToWadName(activemaplist.selectedMap.spawnParameter.wadList) :new List<string>() {"none"} )))</span>
+					<span style="top:30px"><Button tooltip="Goto Map Position" @onclick=@(() => gotoPosition(activemaplist.selectedMap.spawnParameter.mapName))><i>turn_slight_left</i> Goto Map </Button> </span>
+					<span style="top:30px"><Button tooltip="Remove Map" @onclick=@(() => Manager.adminConCommandHandler(1,mapName:activemaplist.selectedMap.spawnParameter.mapName))><i>remove_circle_outline</i> Remove Map </Button> </span>
+				}
+			</div>
+		</div>
+		<div style="display:none;" class="tab_3" @ref="tab_3">
+			<div style="flex-direction:column;width:30%;align-content:center;align-items:center">
+				<ExternalMirrorList @ref="externalMirrorList"></ExternalMirrorList>
+				@if(externalMapList != null && externalMapList.IsValid() && !string.IsNullOrEmpty(externalMapList.selectedMap))
+				{
+					<Button tooltip="Spawn Map" @onclick=@(() => spawnMapUrl(externalMirrorList.selectedMirror,$"maps/{externalMapList.selectedMap}",""))><i>downloading</i> Spawn </Button>
+				}	
+				@if (externalMapList != null && externalMapList.IsValid() && Manager.Maps.TryGetValue($"maps/{externalMapList.selectedMap}", out var map) && map.textureErrors.Count() != 0) // For goldsrc
+				{
+					<Button tooltip="If there are texture errors, we will find out as similar as textures for you, if not work, may be the data of client to server is too large, fix soon" @onclick=@(() => spawnUrlMapWithSuggestedWads(externalMirrorList.selectedMirror, externalMapList.selectedMap))><i>download_for_offline</i> Try To Spawn With Similar Textures </Button>
+				}
+				@(externalMapList != null ? $"Found maps: {externalMapList.maps.Count()}" : "")
+			</div>
+			<ExternalMapList @ref="externalMapList"></ExternalMapList>
+		</div>
+		<div style="display:none;" class="tab_4" @ref="tab_4">
+			<div style="flex-direction:column;">
+				<div style="height:60%;flex-direction:row;">
+					<TextureList @ref="texturelist"></TextureList>
+					<div @ref="canvas" style="top:10px;width:256px;height:256px;box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);"></div>
+				</div>
+				<div style="height:5%;margin:10px;">Cached Texture: @Render.TextureCache.textureData.Count()   Cached Material: @Render.MaterialCache.materialData.Count()</div>
+				<Button style="left:10px;width:30%;" tooltip="Clear the texture cache, will not recreate.." @onclick=@(() => Render.TextureCache.clearTexture())><i>remove_circle</i> Clear Texture Cache ( Local ) </Button>
+				<Button style="left:10px;width:30%;" tooltip="Clear the material cache, will not recreate.." @onclick=@(() => Render.MaterialCache.clearMaterial())><i>remove_circle</i> Clear Material Cache ( Local ) </Button>
+			</div>
+		</div>
+		<div style="display:none;align-items:center;align-content:center;flex-direction:column;justify-content:center;width:100%" class="tab_5" @ref="tab_5">
+			<div>Spawn in;</div>
+			<div style="width:100%;justify-content:center;">	
+				<Button class="@(Manager.clientSettings.spawnPos == 0)" tooltip="Spawn map under me" @onclick=@(() => {Manager.clientSettings.spawnPos = 0;Manager.saveSettings();})><i>settings_suggest</i> Under me </Button>
+				<Button class="@(Manager.clientSettings.spawnPos == 1)" tooltip="Spawn map my aim position" @onclick=@(() => {Manager.clientSettings.spawnPos = 1;Manager.saveSettings();})><i>settings_suggest</i> Aim Position </Button>
+				<Button class="@(Manager.clientSettings.spawnPos == 2)" tooltip="Spawn map under of the entity of this addon" @onclick=@(() => {Manager.clientSettings.spawnPos = 2;Manager.saveSettings();})><i>settings_suggest</i> Under of the Entity </Button>
+				<Button class="@(Manager.clientSettings.spawnPos == 3)" tooltip="Spawn map the center of the map" @onclick=@(() => {Manager.clientSettings.spawnPos = 3;Manager.saveSettings();})><i>settings_suggest</i> 0,0,0 (World Center) </Button>
+			</div>
+			<div style="margin-top:15px">Clear Texture Cache;</div>
+			<div style="width:100%;justify-content:center;">
+				<Button class="@(!Manager.clientSettings.clearTextureCache)" tooltip="Never clear of the cache" @onclick=@(() => {Manager.clientSettings.clearTextureCache = false;Manager.saveSettings();})><i>settings_suggest</i> Never </Button>
+				<Button class="@(Manager.clientSettings.clearTextureCache)" tooltip="Always clear every new map spawning" @onclick=@(() => {Manager.clientSettings.clearTextureCache = true;Manager.saveSettings();})><i>settings_suggest</i> Every New Spawn </Button>
+			</div>
+			<div style="margin-top:15px">Clear Material Cache;</div>
+			<div style="width:100%;justify-content:center;">
+				<Button class="@(!Manager.clientSettings.clearMaterialCache)" tooltip="Never clear of the cache" @onclick=@(() => {Manager.clientSettings.clearMaterialCache = false;Manager.saveSettings();})><i>settings_suggest</i> Never </Button>
+				<Button class="@(Manager.clientSettings.clearMaterialCache)" tooltip="Always clear every new map spawning" @onclick=@(() => {Manager.clientSettings.clearMaterialCache = true;Manager.saveSettings();})><i>settings_suggest</i> Every New Spawn </Button>
+			</div>
+			<div style="margin-top:15px">Clear Maps;</div>
+			<div style="width:100%;justify-content:center;">
+				<Button class="@(!Manager.clientSettings.clearMaps)" tooltip="Never clear of the maps" @onclick=@(() => {Manager.clientSettings.clearMaps = false;Manager.saveSettings();})><i>settings_suggest</i> Never </Button>
+				<Button class="@(Manager.clientSettings.clearMaps)"  tooltip="Always clear every new map spawning" @onclick=@(() => {Manager.clientSettings.clearMaps = true;Manager.saveSettings();})><i>settings_suggest</i> Every New Spawn </Button>
+			</div>
+		</div>
+		<div style="display:none;" class="tab_6" @ref="tab_6">
+			<div style="justify-content:center;align-content:center;align-items:center;align-self:center;width:100%;height:100%;flex-direction:column;font-family:Tahoma;">
+				<div style="font-color:white;font-size:40px;text-shadow:0 0 3px rgba(1,1,1,1);">s&box Community</div>
+				<div style="font-size:20px;">Visit to sbox.community</div>
+				<div style="height:10%;"></div>
+				<div style="font-size:16px;">GitHub</div>
+				<div style="font-size:14px;">https://github.com/sbox-community/sbox-map-parser-addon</div>
+			</div>
+		</div>
+	</div>
+</div>
+@code
+{
+	List<Package> Packages = new List<Package>();
+	Package activePackage;
+	List<Manager.ContentPackage.PackageInfo> mapsOfActivePackage = new List<Manager.ContentPackage.PackageInfo>();
+
+	public bool toggleMenu = true;
+	public Panel header { get; set; }
+	public Panel body { get; set; }
+	public MapList maplist { get; set; }
+	public Panel canvas { get; set; }
+	public TextureList texturelist { get; set; }
+	public ActiveMapList activemaplist { get; set; }
+	public ExternalMirrorList externalMirrorList { get; set; }
+	public ExternalMapList externalMapList { get; set; }
+	public Panel tab_1 { get; set; }
+	public Panel tab_2 { get; set; }
+	public Panel tab_3 { get; set; }
+	public Panel tab_4 { get; set; }
+	public Panel tab_5 { get; set; }
+	public Panel tab_6 { get; set; }
+
+	bool updateMaplist = false;
+	float turn = 0;
+	public override void Tick()
+	{
+		if (Input.Pressed(InputButton.Walk))
+			toggleMenuHandler();
+
+		turn += (float)PerformanceStats.FrameTime / 10f;
+		turn = turn > 1f ? 0 : turn;
+
+		header.Style.Set($"background-image: linear-gradient( {turn}turn, {Util.Rainbow(MathF.Sin(Time.Now / 10f)).Hex}, {(Util.Rainbow(0.1f + MathF.Sin(Time.Now / 10f)).Hex)}, {(Util.Rainbow(0.15f + MathF.Sin(Time.Now / 10f)).Hex)} );");
+
+		if(updateMaplist && maplist != null)
+		{
+			updateMaplist = false;
+			maplist.maps = mapsOfActivePackage;
+		}
+
+		base.Tick();
+	}
+	async Task retrievePackages(int offset = 0)
+	{
+		activePackage = null;
+		Packages ??= new();
+		Packages?.Clear();
+
+		var found = await Package.FindAsync("+mapparser type:addon"); //local:true is not working for now
+		if (found != null)
+			Packages.AddRange(found.Packages);
+
+		StateHasChanged();
+	}
+	async void retrievePackage(Package package)
+	{
+		activePackage = package;
+	}
+	async void mountMap(Package package)
+	{
+		activePackage = null;
+		mapsOfActivePackage.Clear();
+
+		activePackage = package;
+
+		if (package == null)
+		{
+			Notify.Create("Package not found", Notify.NotifyType.Error );
+			return;
+		}
+
+		var filesystem = await package.MountAsync(false);
+		if (filesystem == null)
+			Notify.Create("Mount failed, trying mounted filesystem", Notify.NotifyType.Error);
+
+		mapsOfActivePackage = Manager.ContentPackage.retrieveContent(package, filesystem == null ? FileSystem.Mounted : filesystem);
+
+		Notify.Create($"Mount succied ( {package.FullIdent} )", Notify.NotifyType.Info);
+		updateMaplist = true;
+
+	}
+	async void spawnMap(Package package)
+	{
+		Manager.adminConCommandHandler(0, activePackage.FullIdent, Util.PathToMapName(maplist.selectedPackage?.bsp), spawnPos: Manager.clientSettings.spawnPos, clearTextureCache: Manager.clientSettings.clearTextureCache, clearMaterialCache: Manager.clientSettings.clearMaterialCache, clearMaps: Manager.clientSettings.clearMaps);
+		Notify.Create($"Starting to spawn ( {Util.PathToMapName(maplist.selectedPackage?.bsp)} )", Notify.NotifyType.Info);
+	}
+	async void spawnMapUrl( string baseurl, string mapname, string wadlist )
+	{
+		Manager.adminConCommandHandler(3, mapName: mapname, baseUrl: baseurl, wadlist: wadlist, savefolder: "goldsrc", spawnPos: Manager.clientSettings.spawnPos, clearTextureCache: Manager.clientSettings.clearTextureCache, clearMaterialCache: Manager.clientSettings.clearMaterialCache, clearMaps: Manager.clientSettings.clearMaps);
+		Notify.Create($"Starting to spawn ( {mapname} - {baseurl})", Notify.NotifyType.Info);
+	}
+	void addonList()
+	{
+		_ = retrievePackages();
+	}
+
+	void openTab(Panel tab)
+	{
+		closeAllTabs();
+		if (tab == tab_1)
+		{
+			tab_1.Style.Display = DisplayMode.Flex;
+			addonList();
+		}
+		else if (tab == tab_2)
+		{
+			tab_2.Style.Display = DisplayMode.Flex;
+		}
+		else if (tab == tab_3)
+		{
+			initializeStaticInfoFiles();
+			tab_3.Style.Display = DisplayMode.Flex;
+			externalMirrorList.mapList = externalMapList;
+		}
+		else if (tab == tab_4)
+		{
+			tab_4.Style.Display = DisplayMode.Flex;
+			texturelist.canvas = canvas;
+		}
+		else if (tab == tab_5)
+		{
+			tab_5.Style.Display = DisplayMode.Flex;
+		}
+		else if (tab == tab_6)
+		{
+			tab_6.Style.Display = DisplayMode.Flex;
+		}
+	}
+	void closeAllTabs()
+	{
+		tab_1.Style.Display = DisplayMode.None;
+		tab_2.Style.Display = DisplayMode.None;
+		tab_3.Style.Display = DisplayMode.None;
+		tab_4.Style.Display = DisplayMode.None;
+		tab_5.Style.Display = DisplayMode.None;
+		tab_6.Style.Display = DisplayMode.None;
+	}
+	void initializeStaticInfoFiles()
+	{
+		if(Manager.MapMirrors.Count() == 0)
+			Manager.MapMirrors.Add(("http://www.half-life.fr/cs/mapsmirror/", "goldsrc", Util.Decompress<string>(Convert.FromBase64String(MapParser.GoldSrc.MirrorData.maplist)).Split('\n').ToList()));
+
+		//GoldSrc
+		if (GoldSrc.WAD.wadIndex.Count() == 0)
+			GoldSrc.WAD.wadIndex = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(Util.Decompress<string>(Convert.FromBase64String(MapParser.GoldSrc.MirrorData.wadlist)));
+	}
+	List<string> PathToWadName(List<string> wadList)
+	{
+		List<string> Sanitized = new();
+
+		foreach(var wad in wadList)
+		{
+			Sanitized.Add(Util.PathToMapName(wad));
+		}
+		return Sanitized;
+	}
+	void gotoPosition(string mapname)
+	{
+		Manager.adminConCommandHandler(2, mapName: mapname);
+	}
+
+	// For goldsrc
+	void spawnUrlMapWithSuggestedWads( string selectedmirror, string selectedmap )
+	{
+		// Double checking
+		if (!Manager.Maps.TryGetValue($"maps/{selectedmap}", out var map) || map.textureErrors.Count() == 0)
+		{
+			Notify.Create("Map or texture errors not found, will not spawn", Notify.NotifyType.Error);
+			return;
+		}
+
+		List<string> listRequiredTexture = new();
+
+		foreach (var tex in map.textureErrors)
+		{
+			var values = GoldSrc.WAD.wadFilesFromTextureName(tex);
+			if( values.Count() != 0 )
+				listRequiredTexture.Add(values[Game.Random.Int(0, values.Count()-1)]);
+		}
+
+		listRequiredTexture = listRequiredTexture.Distinct().ToList();
+
+		Notify.Create($"Wads of found similar textures: {string.Join(", ", listRequiredTexture)}");
+
+		spawnMapUrl(selectedmirror, $"maps/{selectedmap}", string.Join(",", listRequiredTexture));
+	}
+
+	void toggleMenuHandler()
+	{
+		toggleMenu = !toggleMenu;
+
+		if(toggleMenu)
+		{
+			Style.PointerEvents = PointerEvents.All;
+			Style.Top = Length.Percent(25.5f);
+			body.Style.Opacity = 1f;
+			RemoveClass("Deactive");
+			header.RemoveClass("Deactive");
+		}
+		else
+		{
+			Style.PointerEvents = PointerEvents.None;
+			Style.Top = Length.Percent(3);
+			body.Style.Opacity = 0f;
+			AddClass("Deactive");
+			header.AddClass("Deactive");
+		}
+	}
+	void CloseMenu()
+	{
+		Style.PointerEvents = PointerEvents.None;
+		RemoveClass("Open");
+		AddClass("Close");
+		_ = Util.Timer( 50, () =>
+		{
+			if(this != null && this.IsValid())
+				this.Delete();
+		});
+	}
+	protected void OnAfterTreeRender(bool firstTime)
+	{
+		if (firstTime)
+			openTab(tab_1);
+	}
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(header, toggleMenu, externalMapList);// activemaplist.selectedMap
+	}
+}

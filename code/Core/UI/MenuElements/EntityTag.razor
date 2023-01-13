@@ -1,0 +1,104 @@
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+
+@namespace MapParser
+@inherits Panel
+
+@if (EntMP == null || !EntMP.IsValid()) return;
+
+<style>
+	EntityTag {
+		position: absolute;
+		transform: translate( -50% );
+		transition: opacity 0.2s ease-in;
+		align-items: center;
+		flex-direction: row;
+		opacity: 1;
+		display: none;
+		font-family: Verdana;
+
+
+    .tree {
+        width: 39px;
+        height: 40px;
+        background-size:40px 40px;
+		background-image: url("materials/editor/info_world_layer_tga_a6dca178.generated.vtex");
+        background-repeat: no-repeat;
+        margin-right: 2px;
+    }
+
+    .column {
+        flex-direction: column;
+    }
+
+    .info1 {
+        font-size: 24px;
+        color: white;
+    }
+
+    .info2 {
+        font-size: 10px;
+        text-shadow: 0px 0px 1px black;
+        color: white;
+        padding-left: 5px;
+    }
+
+    &.show {
+        display: flex;
+    }
+}
+</style>
+
+<root>
+	<div class="tree"></div>
+	<div class="column">
+		<label @ref="info1" class="info1">Map Parser</label>
+		<label @ref="info2" class="info2"> [Needs sv_cheats is 1]</label>
+	</div>
+</root>
+@code
+{
+	public AnimatedEntity EntMP { get; set; }
+	Panel info1 { get; set; }
+	Panel info2 { get; set; }
+
+	public override void Tick()
+	{
+		//Check is still valid when removed
+		if (EntMP == null || !EntMP.IsValid())
+		{
+			SetClass("show", false);
+			//this.Delete();
+			return;
+		}
+
+		var isHidden = true;
+		var distance = EntMP.Position.DistanceSquared(Game.LocalPawn.Position);
+		var position = (EntMP.Position - EntMP.Rotation.Down * (40f + ((distance < 3000f ? 0 : (distance / (75f*75f)))) * MathF.Cos(Time.Now))).ToScreen();
+		var distMax = (300 * 300);
+		
+		if (position.z >= 0f && distance < distMax)
+		{
+			position.x *= Screen.Size.x * ScaleFromScreen;
+			position.y *= Screen.Size.y * ScaleFromScreen;
+
+			Style.Left = Length.Pixels(position.x);
+			Style.Top = Length.Pixels(position.y);
+
+			info1.Style.Set($"text-shadow: 0px 0px 2px {Util.Rainbow(MathF.Sin(Time.Now / 4f)).Hex};");
+			EntMP.RenderColor = Util.Rainbow(MathF.Sin(MathF.Pow(8, MathF.Sin(Time.Now)))); // Expression from my Math for Motion app
+
+			isHidden = Manager.mainMenu != null && Manager.mainMenu.IsValid();
+
+		}
+		SetClass("show", !isHidden);
+
+		base.Tick();
+	}
+
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(EntMP);
+	}
+}

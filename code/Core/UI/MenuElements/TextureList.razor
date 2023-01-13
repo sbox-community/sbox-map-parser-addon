@@ -1,0 +1,126 @@
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using Sandbox.Diagnostics;
+@using System.Collections.Generic;
+@using System.Linq;
+@using System.Threading.Tasks;
+
+
+@namespace MapParser
+@inherits Panel
+
+<style>
+	
+	TextureList {
+		width:50%;
+		height: 90%;
+		border-radius: 2px;
+
+		flex-direction: column;
+		flex-wrap: nowrap;
+		margin:10px;
+		box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
+		flex-shrink: 0;
+
+		.rowHeader{
+			background: linear-gradient(to top, #ffe259, #ffa751);
+			width:100%;
+			height: 9%;
+			flex-shrink:0;
+			flex-direction:row;
+
+			.rowHeader_item{
+				width:100%;
+				height:100%;
+				justify-content:center;
+				border-bottom-width:1px;
+				border-left-width:1px;
+				border-color:black;
+				&:nth-child(1) {
+					border-left-width: 0px;
+				}
+			}
+		}
+		.row{
+			overflow:scroll;
+			flex-shrink: 0;
+			background-color: #afafaf;
+			width:100%;
+			height: 100%;
+			flex-direction:column;
+
+			.rowItem{
+					width: 100%;
+				height: 10%;
+			min-height: 10%;
+				flex-shrink: 0;
+				border-bottom-width:1px;
+				border-color:black;
+				&.True
+				{
+					flex-shrink: 0;
+					background: linear-gradient(to bottom, #ff6a6a, #ff1f1f);
+					&:hover{
+						background: none;
+						background-color: #fd4646;
+					}
+				}
+				&.False
+				{
+					flex-shrink: 0;
+					background: linear-gradient(to bottom, #898989, #a4a4a4);
+					&:hover{
+						background: none;
+						background-color: gray;
+					}
+				}
+			}
+
+		}
+}
+</style>
+
+<div class="rowHeader">
+	<div class="rowHeader_item">Texture</div>
+	<div class="rowHeader_item">Size</div>
+</div>
+<div class="row">
+	@if (Render.TextureCache.textureData.Count() != 0)
+	{
+		@foreach (var textureCacheData in Render.TextureCache.textureData)
+		{
+			<div class="rowItem @(selectedData.Equals(textureCacheData.Value))" @onclick=@(() => selectRow(textureCacheData.Value))><div style="width:50%;max-width:50%;min-width:50%;justify-content:center">@(textureCacheData.Key)</div><div style="width:50%;max-width:50%;min-width:50%;justify-content:center">@(textureCacheData.Value.texture.Width)x@(textureCacheData.Value.texture.Height)</div></div>
+		}
+	}
+	@if (Render.TextureCache.textureData.Count() == 0)
+	{
+		<div class="rowItem" style="justify-content:center">Not Cached Texture Found</div>
+	}
+</div>
+
+@code
+{
+	Render.TextureCacheData selectedData;
+
+	public Panel canvas;
+
+	public override void Tick()
+	{
+		base.Tick();
+	}
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(selectedData);
+	}
+	void selectRow(Render.TextureCacheData packagedata)
+	{
+		selectedData = packagedata;
+		canvas.Style.SetBackgroundImage( packagedata.texture );
+		canvas.Style.BackgroundRepeat = BackgroundRepeat.NoRepeat;
+		canvas.Style.BackgroundSizeX = Length.Pixels(packagedata.texture.Width);
+		canvas.Style.BackgroundSizeY = Length.Pixels(packagedata.texture.Height);
+		canvas.Style.BackgroundPositionX = Length.Fraction((1f - (packagedata.texture.Width / 256f))*0.5f);
+		canvas.Style.BackgroundPositionY = Length.Fraction((1f - (packagedata.texture.Height / 256f)) * 0.5f);
+	}
+}

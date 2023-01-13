@@ -1,0 +1,5 @@
+D:\SteamLibrary\steamapps\common\sbox\addons\sbox-map-parser_addon\code\obj\Debug\map_parser.csproj.AssemblyReference.cache
+D:\SteamLibrary\steamapps\common\sbox\addons\sbox-map-parser_addon\code\obj\Debug\map_parser.GeneratedMSBuildEditorConfig.editorconfig
+D:\SteamLibrary\steamapps\common\sbox\addons\sbox-map-parser_addon\code\obj\Debug\map_parser.AssemblyInfoInputs.cache
+D:\SteamLibrary\steamapps\common\sbox\addons\sbox-map-parser_addon\code\obj\Debug\map_parser.AssemblyInfo.cs
+D:\SteamLibrary\steamapps\common\sbox\addons\sbox-map-parser_addon\code\obj\Debug\map_parser.csproj.CoreCompileInputs.cache
