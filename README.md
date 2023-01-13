@@ -22,5 +22,8 @@ Posible updates;
 - Model and Particle parser ( for goldsrc )
 - Another game map parsers ( maybe source engine? )
 
+How to publish my map;
+TODO
+
 Credits;
 - Mainly BSP Parser code from https://github.com/magcius/noclip.website/
