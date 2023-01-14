@@ -71,11 +71,11 @@ PS
 	#include "common/pixel.hlsl"
 
 	//CreateInputTexture2D(TextureDiffuse, Srgb, 8, "", "_color", "Color,1/1", Default3(1.0, 1.0, 1.0));
-	CreateTexture2D(u_TextureDiffuse) < Attribute("ColorBuffer"); SrgbRead(true); Filter(MIN_MAG_LINEAR_MIP_POINT); AddressU(MIRROR); AddressV(MIRROR); > ; //OutputFormat(DXT5);
+	CreateTexture2D(u_TextureDiffuse) < Attribute("TextureDiffuse"); SrgbRead(true); Filter(MIN_MAG_LINEAR_MIP_POINT); AddressU(MIRROR); AddressV(MIRROR); > ; //OutputFormat(DXT5);
 	//TextureAttribute(u_TextureDiffuse, u_TextureDiffuse);
 
 	//CreateInputTexture2D(TextureLightmap, Srgb, 8, "", "_color", "Color,1/2", Default3(1.0, 1.0, 1.0));
-	CreateTexture2D(u_TextureLightmap) <  Attribute("ColorBuffer"); SrgbRead(true); Filter(MIN_MAG_LINEAR_MIP_POINT); AddressU(MIRROR); AddressV(MIRROR); > ;
+	CreateTexture2D(u_TextureLightmap) <  Attribute("TextureLightmap"); SrgbRead(true); Filter(MIN_MAG_LINEAR_MIP_POINT); AddressU(MIRROR); AddressV(MIRROR); > ;
 	//TextureAttribute(u_TextureLightmap, u_TextureLightmap);
 
 	float4 MainPs(PS_INPUT i) : SV_Target0
