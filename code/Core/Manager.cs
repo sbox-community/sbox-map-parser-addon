@@ -154,6 +154,7 @@ namespace MapParser
 			{
 				if ( mainMenu != null && mainMenu.IsValid() )
 					mainMenu.AddClass( "Open" );
+					(mainMenu as Menu).firstOpen();
 			} );
 		}
 
@@ -201,13 +202,18 @@ namespace MapParser
 			// Check if .bsp is not downloaded yet, maybe there can be a checksum control..
 			if ( !FileSystem.Data.FileExists( mapPath ) )
 			{
+				DownloadNotification.CreateInfo( $"Downloading.. ( {settings.mapUrl} )" );
 				var http = new Http( new Uri( $"{settings.mapUrl}" ) );
 				var data = await http.GetBytesAsync();
 
 				if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+				{
 					FileSystem.Data.WriteAllText( $"{mapPath}", Convert.ToBase64String( data ) );
+					DownloadNotification.CreateInfo( $"Download successful ( {settings.mapUrl} )", 5f );
+				}
 				else
 				{
+					DownloadNotification.CreateInfo( $"Download failed ( {settings.mapUrl} )", 10f );
 					Notify.Create( "Map not found in url!", Notify.NotifyType.Error );
 					return;
 				}
@@ -224,7 +230,10 @@ namespace MapParser
 				var data = await http.GetStringAsync();
 
 				if ( !data.Contains( "<!DOCTYPE" ) )
+				{
+					DownloadNotification.CreateInfo( $"Download successful ( {settings.mapUrl.Replace( ".bsp", ".res" )} )", 5f );
 					FileSystem.Data.WriteAllText( $"{mapPath.Replace( ".bsp", ".res" )}", data );
+				}
 
 				http.Dispose();
 
@@ -248,13 +257,20 @@ namespace MapParser
 				var wadPath = $"{downloadPath}{settings.saveFolder}{wadName}.wad";
 				if ( !FileSystem.Data.FileExists( wadPath ) )
 				{
+					DownloadNotification.CreateInfo( $"Downloading.. ( {wadurl} )" );
 					var http = new Http( new Uri( $"{wadurl}" ) );
 					var data = await http.GetBytesAsync();
 
 					if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+					{
+						DownloadNotification.CreateInfo( $"Download successful ( {wadurl} )", 5f );
 						FileSystem.Data.WriteAllText( wadPath, Convert.ToBase64String( data ) );
+					}
 					else
+					{
+						DownloadNotification.CreateInfo( $"Download failed ( {wadurl} )", 10f );
 						Notify.Create( $"{wadName}.wad not found in url {wadurl}", Notify.NotifyType.Error );
+					}
 
 					http.Dispose();
 				}

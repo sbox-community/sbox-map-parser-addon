@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\sbox-map-parser_addon\\code\\map_parser.csproj",
+      "projectUniqueName": "D:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\sbox-map-parser-addon\\code\\map_parser.csproj",
       "projectName": "map_parser",
-      "projectPath": "D:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\sbox-map-parser_addon\\code\\map_parser.csproj",
+      "projectPath": "D:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\sbox-map-parser-addon\\code\\map_parser.csproj",
       "packagesPath": "C:\\Users\\bypolat\\.nuget\\packages\\",
-      "outputPath": "D:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\sbox-map-parser_addon\\code\\obj\\",
+      "outputPath": "D:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\sbox-map-parser-addon\\code\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "H:\\visualstudio_diger\\Shared\\NuGetPackages"

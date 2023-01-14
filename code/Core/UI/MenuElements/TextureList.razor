@@ -51,9 +51,9 @@
 			flex-direction:column;
 
 			.rowItem{
-					width: 100%;
+				width: 100%;
 				height: 10%;
-			min-height: 10%;
+				min-height: 10%;
 				flex-shrink: 0;
 				border-bottom-width:1px;
 				border-color:black;
@@ -90,7 +90,7 @@
 	{
 		@foreach (var textureCacheData in Render.TextureCache.textureData)
 		{
-			<div class="rowItem @(selectedData.Equals(textureCacheData.Value))" @onclick=@(() => selectRow(textureCacheData.Value))><div style="width:50%;max-width:50%;min-width:50%;justify-content:center">@(textureCacheData.Key)</div><div style="width:50%;max-width:50%;min-width:50%;justify-content:center">@(textureCacheData.Value.texture.Width)x@(textureCacheData.Value.texture.Height)</div></div>
+			<div class="rowItem @(selectedData.Equals(textureCacheData.Value))" @onclick=@(() => selectRow(textureCacheData.Value))><div style="width:50%;max-width:50%;min-width:50%;justify-content:center;">@(textureCacheData.Key)</div><div style="width:50%;max-width:50%;min-width:50%;justify-content:center">@(textureCacheData.Value.texture.Width)x@(textureCacheData.Value.texture.Height)</div></div>
 		}
 	}
 	@if (Render.TextureCache.textureData.Count() == 0)

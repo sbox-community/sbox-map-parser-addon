@@ -10,28 +10,25 @@
 @inherits Panel
 
 <style>
-	Notification {
-		height: 3%;
-		min-height: 3%;
+	DownloadNotification {
+		height: 4%;
+		min-height: 4%;
+		width: 100%;
 		flex-shrink: 0;
-		margin: 5px 5px 0px 5px;
 		transition: all 0.3s ease-in-out, opacity 0.2s linear;
 		font-color:white;
 		font-family:Calibri;
-		right: -100%;
+		top: -100%;
 		opacity:0;
-		justify-content:flex-end;
+		position: absolute;
+		justify-content:center;
 
 		&.Active{
-			right: 0%;
+			top: 0%;
 			opacity:1;
 			sound-in: ui.popup.message.open;
 		}
-		&.ActiveWarning{
-			right: 0%;
-			opacity:1;
-			sound-in: ui.button.press;
-		}
+
 		.content{
 			margin: 0px 0px 0px 10px;
 			border-radius: 2px;
@@ -39,6 +36,7 @@
 			align-items:center;
 			height: 100%;
 			padding: 10px;
+			flex-shrink:0;
 			background-color: rgba(0.1,0.1,0.1,0.8);
 			text-shadow: 0 0 2px #000000,0 0 1px rgba(1,1,1,1);
 		}
@@ -46,58 +44,70 @@
 </style>
 
 <div class="content">
-
-	@switch (notifyType)
-	{
-		case (Notify.NotifyType.Info):
-			<i style="text-shadow: 0px 0px 2px black;font-color:#ffff99">info</i>
-			break;
-		case (Notify.NotifyType.Warning):
-			<i style="text-shadow: 0px 0px 2px black;font-color:orange">warning</i>
-			break;
-		case (Notify.NotifyType.Error):
-			<i style="text-shadow: 0px 0px 2px black;font-color:red">error</i>
-			break;
-		default:
-			<i>info</i>
-			break;
-	}
-	<span style="margin-left:5px;">@note</span>
+	<span style="margin-left:5px;"><i style="top:2px;right:3px;">download</i>@note</span>
 </div>
 
 @code
 {
+	public static List<DownloadNotification> references = new();
+
 	public string note = "";
-	public Notify.NotifyType notifyType = 0;
-	public Notify.NotifySide notifySide = 0;
+	float timeLeft = 0;
 	public override void Tick()
 	{
+		if (timeLeft < Time.Now)
+			Remove();
+
 		base.Tick();
 	}
 	protected override int BuildHash()
 	{
 		return HashCode.Combine(note);
 	}
+
+	public static void CreateInfo( string info, float timeleft = 60f )
+	{
+		if(Game.IsServer)
+		{
+			// Send to info the spawner of the map
+			return;
+		}
+
+		RemoveAll();
+		DownloadNotification panel = Game.RootPanel.FindRootPanel().AddChild<DownloadNotification>();
+		panel.note = info.Replace("\r","").Replace("\n","");
+		panel.timeLeft = Time.Now + timeleft;
+		panel.Start();
+
+		references.Add( panel );
+	}
+
 	public void Start()
 	{
 		_ = MapParser.Util.Timer(1, () =>
 		{
 			if (this != null && this.IsValid())
 			{
-				AddClass(notifyType != Notify.NotifyType.Info ? "Active" : "ActiveWarning");
+				AddClass("Active");
 			}
 		});
 	}
 	public void Remove()
 	{
 		RemoveClass("Active");
+		references.Remove(this);
+
 		_ = MapParser.Util.Timer(250, () =>
 		{
 			if (this != null && this.IsValid())
-			{
 				this.Delete();
-				Notify.tryRemoveNotificationPanel();
-			}
 		});
+	}
+	static void RemoveAll()
+	{
+		foreach (var panel in references)
+			panel.Delete();
+
+		references.Clear();
 	}
 }

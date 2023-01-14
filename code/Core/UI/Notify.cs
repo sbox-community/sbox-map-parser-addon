@@ -59,6 +59,7 @@ namespace MapParser
 				notificationPanel.Style.FlexShrink = 0;
 				notificationPanel.Style.Width = Length.Percent( 20f );
 				notificationPanel.Style.Height = Length.Percent( 100f );
+				notificationPanel.Style.Right = Length.Percent( 0f );
 			}
 		}
 		public static void tryRemoveNotificationPanel()

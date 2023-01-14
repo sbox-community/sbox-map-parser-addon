@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "0gXEbopgoWN8f9U+uajWTxIyy/NnqeV8bGj75RH8rTbFiaUW6WpXXsGmGTejjd0QdqbfEX6yzMRxrRIvWFBIdw==",
+  "dgSpecHash": "InpfZtIvn5Pkd+OnLaQfP/plurceD7QzqQ4xj6EtxR/VYJyszq1lLBRHJ3MuesqjN1YDuyZepW2VYUu5Ihfyzw==",
   "success": true,
-  "projectFilePath": "D:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\sbox-map-parser_addon\\code\\map_parser.csproj",
+  "projectFilePath": "D:\\SteamLibrary\\steamapps\\common\\sbox\\addons\\sbox-map-parser-addon\\code\\map_parser.csproj",
   "expectedPackageFiles": [],
   "logs": []
 }

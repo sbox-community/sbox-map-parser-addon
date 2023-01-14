@@ -239,8 +239,8 @@
 <div @ref="body" class="body">
 	<div class="tabs">
 		<Button tooltip="Map Addons From Asset.Party" class="tab_button @(tab_1 != null && tab_1.IsValid() && tab_1.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_1))><i>border_clear</i> Map Addons </Button>
-		<Button tooltip="Currently Spawned Exists Maps" class="tab_button @(tab_2 != null && tab_2.IsValid() && tab_2.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_2))><i>storage</i> Active Maps </Button>
 		<Button tooltip="External Maps From FastDL Mirrors" class="tab_button @(tab_3 != null && tab_3.IsValid() && tab_3.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_3))><i>install_desktop</i> External Maps </Button>
+		<Button tooltip="Currently Spawned Exists Maps" class="tab_button @(tab_2 != null && tab_2.IsValid() && tab_2.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_2))><i>storage</i> Active Maps </Button>
 		<Button tooltip="Utilities For Debugging" class="tab_button @(tab_4 != null && tab_4.IsValid() && tab_4.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_4))><i>straighten</i> Utilities </Button>
 		<Button tooltip="Spawning Settings" class="tab_button @(tab_5 != null && tab_5.IsValid() && tab_5.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_5))><i>settings</i> Settings </Button>
 		<Button tooltip="Don't Hesitate :)" class="tab_button @(tab_6 != null && tab_6.IsValid() && tab_6.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_6))><i>question_mark</i> About </Button>
@@ -280,11 +280,11 @@
 						<span class="thumb" style="background-image:url('@(activePackage.Thumb.Contains("https") ? activePackage.Thumb : "https://files.facepunch.com/sbox/asset/sboxcommunity.map_parser/logo.generated.png" )')"></span>
 						<span class="title">@(activePackage.Title.Replace("[MP]",""))</span>
 						<span class="owner">By @activePackage.Org.Title</span>
-						@if (mapsOfActivePackage.Count() == 0)
+						@if (mapsOfActivePackage.Count() == 0 || !mapsOfActivePackage.TryGetValue(activePackage.FullIdent, out var _))
 						{
 							<Button tooltip="Download and mount in order to get map list" @onclick=@(() => mountMap(activePackage))><i>cloud_download</i> Download & Mount </Button>
 						}
-						@if (mapsOfActivePackage.Count() != 0)
+						@if (mapsOfActivePackage.Count() != 0 && mapsOfActivePackage.TryGetValue(activePackage.FullIdent, out var _))
 						{
 							<MapList @ref="maplist"></MapList>
 							@if ( maplist.selectedPackage is not null )
@@ -376,7 +376,7 @@
 {
 	List<Package> Packages = new List<Package>();
 	Package activePackage;
-	List<Manager.ContentPackage.PackageInfo> mapsOfActivePackage = new List<Manager.ContentPackage.PackageInfo>();
+	Dictionary <string,List<Manager.ContentPackage.PackageInfo>> mapsOfActivePackage = new();
 
 	public bool toggleMenu = true;
 	public Panel header { get; set; }
@@ -394,23 +394,23 @@
 	public Panel tab_5 { get; set; }
 	public Panel tab_6 { get; set; }
 
-	bool updateMaplist = false;
+	List<Manager.ContentPackage.PackageInfo>? updateMaplist = null;
 	float turn = 0;
 	public override void Tick()
 	{
 		if (Input.Pressed(InputButton.Walk))
 			toggleMenuHandler();
 
+		if (updateMaplist is not null && maplist != null)
+		{
+			maplist.maps = updateMaplist.ToList();
+			updateMaplist = null;
+		}
+
 		turn += (float)PerformanceStats.FrameTime / 10f;
 		turn = turn > 1f ? 0 : turn;
 
 		header.Style.Set($"background-image: linear-gradient( {turn}turn, {Util.Rainbow(MathF.Sin(Time.Now / 10f)).Hex}, {(Util.Rainbow(0.1f + MathF.Sin(Time.Now / 10f)).Hex)}, {(Util.Rainbow(0.15f + MathF.Sin(Time.Now / 10f)).Hex)} );");
-
-		if(updateMaplist && maplist != null)
-		{
-			updateMaplist = false;
-			maplist.maps = mapsOfActivePackage;
-		}
 
 		base.Tick();
 	}
@@ -429,11 +429,13 @@
 	async void retrievePackage(Package package)
 	{
 		activePackage = package;
+
+		if (mapsOfActivePackage.TryGetValue(package.FullIdent, out var content))
+			updateMaplist = content;
 	}
 	async void mountMap(Package package)
 	{
 		activePackage = null;
-		mapsOfActivePackage.Clear();
 
 		activePackage = package;
 
@@ -443,14 +445,25 @@
 			return;
 		}
 
+		DownloadNotification.CreateInfo($"Downloading.. ( {package.FullIdent} )");
+
 		var filesystem = await package.MountAsync(false);
 		if (filesystem == null)
+		{
 			Notify.Create("Mount failed, trying mounted filesystem", Notify.NotifyType.Error);
+			DownloadNotification.CreateInfo($"Failed to download ( {package.FullIdent} )", 10f);
+		}
+		else
+			DownloadNotification.CreateInfo($"Download successful ( {package.FullIdent} )", 5f);
 
-		mapsOfActivePackage = Manager.ContentPackage.retrieveContent(package, filesystem == null ? FileSystem.Mounted : filesystem);
+		var content = Manager.ContentPackage.retrieveContent(package, filesystem == null ? FileSystem.Mounted : filesystem);
+
+		_ = mapsOfActivePackage.Remove(package.FullIdent);
+		mapsOfActivePackage.Add(package.FullIdent, content);
+
+		updateMaplist = content;
 
 		Notify.Create($"Mount succied ( {package.FullIdent} )", Notify.NotifyType.Info);
-		updateMaplist = true;
 
 	}
 	async void spawnMap(Package package)
@@ -474,7 +487,6 @@
 		if (tab == tab_1)
 		{
 			tab_1.Style.Display = DisplayMode.Flex;
-			addonList();
 		}
 		else if (tab == tab_2)
 		{
@@ -580,6 +592,10 @@
 			header.AddClass("Deactive");
 		}
 	}
+	public void firstOpen()
+	{
+		openTab(tab_1);
+	}
 	void CloseMenu()
 	{
 		Style.PointerEvents = PointerEvents.None;
@@ -593,11 +609,9 @@
 	}
 	protected void OnAfterTreeRender(bool firstTime)
 	{
-		if (firstTime)
-			openTab(tab_1);
 	}
 	protected override int BuildHash()
 	{
-		return HashCode.Combine(header, toggleMenu, externalMapList);// activemaplist.selectedMap
+		return HashCode.Combine(header, toggleMenu, externalMapList, mapsOfActivePackage);
 	}
 }

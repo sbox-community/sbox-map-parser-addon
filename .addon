@@ -21,7 +21,7 @@
     "ParentPackage": "facepunch.sandbox",
     "Summary": "",
     "Description": "",
-    "Public": false,
+    "Public": true,
     "ReplaceTags": "runtime entity",
     "Compiler": {
       "RootNamespace": "MapParser",
