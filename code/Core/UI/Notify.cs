@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace MapParser
 {
-	public static class Notify
+	public partial class Notify
 	{
 		public enum NotifyType
 		{
@@ -19,6 +19,7 @@ namespace MapParser
 		}
 		public static List<Notification> All = new List<Notification>();
 		public static Panel notificationPanel;
+
 		public static void Create( string newNote, NotifyType notifytype = NotifyType.Info )
 		{
 			if ( notifytype == NotifyType.Info )
@@ -49,6 +50,11 @@ namespace MapParser
 			} );
 		}
 
+		[ClientRpc]
+		public static void CreateCL( string newNote, NotifyType notifytype = NotifyType.Info )
+		{
+			Create( newNote, notifytype );
+		}
 		public static void initializeNotificationPanel()
 		{
 			if ( notificationPanel == null || !notificationPanel.IsValid() )

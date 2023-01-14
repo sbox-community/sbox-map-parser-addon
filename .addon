@@ -19,8 +19,8 @@
     "RenderMins": "-16,-16,-16",
     "RenderMaxs": "-16,-16,-16",
     "ParentPackage": "facepunch.sandbox",
-    "Summary": "",
-    "Description": "",
+    "Summary": "You can spawn ~17k map in game",
+    "Description": "You can spawn ~17k GoldSrc map in game. Github: https://github.com/sbox-community/sbox-map-parser-addon",
     "Public": true,
     "ReplaceTags": "runtime entity",
     "Compiler": {

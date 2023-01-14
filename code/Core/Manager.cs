@@ -8,6 +8,7 @@ using static MapParser.Render;
 using Sandbox.Internal;
 using System.Text;
 using System.Text.Json;
+using static Sandbox.Event;
 
 namespace MapParser
 {
@@ -72,10 +73,17 @@ namespace MapParser
 			public bool clearMaps { get; set; } = true;
 		}
 
-		[ConCmd.Admin( "mapparser_command" )]
+		[ConCmd.Server( "mapparser_command" )]
 		public static void adminConCommandHandler( uint flag, string fullIdent = "", string mapName = "", int spawnPos = 0, string baseUrl = "", string wadlist = "", string savefolder = "unknown_engine", bool clearTextureCache = true, bool clearMaterialCache = true, bool clearMaps = true )
 		{
 			var caller = ConsoleSystem.Caller;
+
+			if ( !caller.IsListenServerHost && ConsoleSystem.GetValue( "sv_cheats", "0" ) == "0" )
+			{
+				Notify.CreateCL( To.Single(caller), "sv_cheats must be 1", Notify.NotifyType.Error );
+				return;
+			}
+
 			if ( flag == 0 || flag == 3 )
 			{
 				var pos = Vector3.Zero;
@@ -90,7 +98,7 @@ namespace MapParser
 					pos = caller.AimRay.Position;
 				else if ( spawnPos == 2 ) // The Entity's position
 				{
-					var findLast = Entity.All.Where(x=>x.GetType()==typeof(MPEntity)).LastOrDefault();
+					var findLast = MPEntity.All.Where(x=>x.GetType()==typeof(MPEntity)).LastOrDefault();
 
 					if( findLast != null )
 						pos = findLast.Position;
