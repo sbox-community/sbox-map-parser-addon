@@ -39,7 +39,7 @@ namespace MapParser.GoldSrc
 					addTexture( lump.data, wadname: wadname );
 			}
 		}
-		// Must be async, otherwise being freezing until to	finish of creation, there must be custom shader to do
+		// Must be async, otherwise being freezing until to finish of creation, there must be custom shader to do
 		// Already implemented, but, textureCoords and scales are corrupting if we creates all texture after the creation of map
 		public static void addTexture( byte[] data, string wadname = "" ) //async
 		{

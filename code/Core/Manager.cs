@@ -90,8 +90,10 @@ namespace MapParser
 					pos = caller.AimRay.Position;
 				else if ( spawnPos == 2 ) // The Entity's position
 				{
-					pos = caller.AimRay.Position;
-					//ang =
+					var findLast = Entity.All.Where(x=>x.GetType()==typeof(MPEntity)).LastOrDefault();
+
+					if( findLast != null )
+						pos = findLast.Position;
 				}
 
 				var settings = new SpawnParameter()

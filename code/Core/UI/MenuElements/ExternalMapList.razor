@@ -117,7 +117,7 @@
 	}
 </div>
 <div class="pagination">
-@for (var i = 0; i < (maps.Count() / limit); i++)
+@for (var i = 0; i < Math.Ceiling((float)maps.Count() / (float)limit); i++)
 {
 	<Button id="@i" style="@(page==i ? "font-color:white;": "font-color:black;")" class="@(page==i)" @onclick=@((PanelEvent e) => changePage(e.This.Id.ToInt()))>@(i + 1)</Button>
 }

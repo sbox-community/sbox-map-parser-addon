@@ -85,6 +85,7 @@ namespace MapParser.GoldSrc
 		public List<byte[]> extraTexData = new List<byte[]>();
 		public LightmapPackerPage lightmapPackerPage { get; set; } = new LightmapPackerPage( 2048, 2048 );
 		public byte[] buffer { get; set; }
+		
 		// For sbox
 		public List<meshData> meshDataList = new();
 
@@ -292,7 +293,7 @@ namespace MapParser.GoldSrc
 					}
 
 					int lightofs;
-					//burasi siknitili olabilir
+
 					using ( MemoryStream stream1 = new MemoryStream( facelist ) )
 					using ( BinaryReader reader1 = new BinaryReader( stream1 ) )
 					{
