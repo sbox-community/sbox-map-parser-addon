@@ -9,6 +9,7 @@ using Sandbox.Internal;
 using System.Text;
 using System.Text.Json;
 using static Sandbox.Event;
+using System.Diagnostics;
 
 namespace MapParser
 {
@@ -25,6 +26,7 @@ namespace MapParser
 		public static List<(string, string, List<string>)> MapMirrors = new();
 
 		// If there is an error about texture, we can handle finding out required texture
+		// TODO: checking which map for these errors, it shouldn't be for the last spawned map
 		public static List<string> lastTextureErrors = new();
 
 		// Server owners want to remove before client not downloaded yet or ongoing spawning,
@@ -113,11 +115,16 @@ namespace MapParser
 					clearMaterialCache = clearMaterialCache,
 					clearTextureCache = clearTextureCache,
 					packageFullIdent = fullIdent,
+					wadList = new(),
 					clients = To.Everyone
 				};
 
 				if ( flag == 0 )
 				{
+					// If we have wadlist from parameter, we can use
+					if( !string.IsNullOrEmpty( wadlist ) )
+						settings.wadList = wadlist.Split( "," ).ToList();
+
 					settings.assetparty_version = true;
 					mapSpawnViaAssetParty( settings );
 				}
@@ -129,7 +136,6 @@ namespace MapParser
 						if ( !string.IsNullOrEmpty( wad ) )
 							settings.wadUrls.Add( $"{baseUrl}{wad}" );
 
-					settings.wadList = new();
 					settings.baseUrl = baseUrl;
 					settings.mapUrl = $"{baseUrl}{mapName}";
 					settings.assetparty_version = false;
@@ -194,7 +200,17 @@ namespace MapParser
 			settings.mapPath = map.bsp;
 			settings.fileSystem = filesystem;
 			if ( Game.IsClient )
-				settings.wadList = map.goldsrc_wads.SelectMany( x => x.Values ).ToList();
+			{
+				settings.wadList.AddRange( map.goldsrc_wads.SelectMany( x => x.Values ).ToList());
+
+				// If there is a .res file, we can obtain the required wads of the map
+				if ( filesystem.FileExists( $"{settings.mapPath.Replace( ".bsp", ".res.txt" )}" ) )
+					foreach ( string line in filesystem.ReadAllText( $"{settings.mapPath.Replace( ".bsp", ".res.txt" )}" ).Split( '\n' ) )
+						if ( line.Contains( ".wad" ) )
+							settings.wadList.Add( Util.PathToMapName( line ) );
+
+				settings.wadList = settings.wadList.Distinct().ToList();
+			}
 			settings.position = settings.position == Vector3.Zero ? map.offset : (map.offset + settings.position);
 			settings.angles = settings.angles == Angles.Zero ? map.angles : (map.angles + settings.angles);
 
@@ -300,7 +316,7 @@ namespace MapParser
 				Notify.Create( "Map Created", Notify.NotifyType.Info );
 
 				if ( settings.assetparty_version )
-					spawnMap_cl( To.Everyone, settings.mapName, settings.position, settings.angles, settings.removeOthers, settings.clearMaterialCache, settings.clearTextureCache, settings.packageFullIdent, assetparty_version: true );
+					spawnMap_cl( To.Everyone, settings.mapName, settings.position, settings.angles, settings.removeOthers, settings.clearMaterialCache, settings.clearTextureCache, settings.packageFullIdent, assetparty_version: true, wadlist: string.Join( ",", settings.wadList ) );
 				else
 					spawnMap_cl( To.Everyone, settings.mapName, settings.position, settings.angles, settings.removeOthers, settings.clearMaterialCache, settings.clearTextureCache, assetparty_version: false, baseurl: settings.baseUrl, savefolder: settings.saveFolder, wadlist: string.Join( ",", settings.wadList ) );
 			}
@@ -416,6 +432,7 @@ namespace MapParser
 				clearTextureCache = clearTextureCache,
 				assetparty_version = assetparty_version,
 				packageFullIdent = packageFullIdent,
+				wadList = new()
 			};
 
 			if ( !assetparty_version )
@@ -423,13 +440,17 @@ namespace MapParser
 				settings.baseUrl = baseurl;
 				settings.mapUrl = $"{baseurl}{mapName}";
 				settings.saveFolder = savefolder;
-				settings.wadList = new();
 
 				List<string> wadlistList = wadlist.Split( "," ).ToList();
 				settings.wadUrls = new();
 
 				foreach ( var wad in wadlistList )
 					settings.wadUrls.Add( $"{settings.baseUrl}{wad}" );
+			}
+			else
+			{
+				if(!string.IsNullOrEmpty(wadlist))
+					settings.wadList = wadlist.Split( "," ).ToList();
 			}
 
 			if ( assetparty_version )
@@ -538,7 +559,8 @@ namespace MapParser
 						map.Value.spawnParameter.clearMaterialCache,
 						map.Value.spawnParameter.clearTextureCache,
 						map.Value.spawnParameter.packageFullIdent,
-						map.Value.spawnParameter.assetparty_version );
+						map.Value.spawnParameter.assetparty_version,
+						string.Join(",", map.Value.spawnParameter.wadList) );
 		}
 
 		[Event.Client.Frame]

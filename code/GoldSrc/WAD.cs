@@ -1,6 +1,8 @@
+using Sandbox;
 using Sandbox.Internal;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace MapParser.GoldSrc
@@ -89,6 +91,37 @@ namespace MapParser.GoldSrc
 			if ( wadIndex.TryGetValue( textureName, out var list ) )
 				return list;
 			return new();
+		}
+		public static Dictionary<string, List<string>> findWadsAndGenerateWadIndex( BaseFileSystem filesystem )
+		{
+			Dictionary<string, List<string>> wadIndex = new();
+
+			foreach ( var wadfile in filesystem.FindFile( "/", "*.wad.txt" ) )
+			{
+				var wadname = Util.PathToMapName( wadfile );
+				var wad = WADParser.ParseWAD( filesystem.ReadAllBytes( $"{wadfile}" ).ToArray() );
+				if ( wad.lumps == null )
+				{
+					Notify.Create( $"{wadfile} problem", Notify.NotifyType.Error );
+					continue;
+				}
+
+				for ( var i = 0; i < wad.lumps.Count(); i++ )
+				{
+					var lump = wad.lumps[i];
+					if ( lump.type == WADLumpType.MIPTEX )
+					{
+						var name = MIPTEXData.GetMipTexName( lump.data );
+
+						if ( !wadIndex.TryGetValue( wadname, out var _ ) )
+							wadIndex.Add( wadname, new List<string>() );
+
+						if ( !wadIndex[wadname].Any( x => x == name ) )
+							wadIndex[wadname].Add( name );
+					}
+				}
+			}
+			return wadIndex;
 		}
 	}
 }

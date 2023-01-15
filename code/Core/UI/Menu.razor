@@ -289,7 +289,11 @@
 							<MapList @ref="maplist"></MapList>
 							@if ( maplist.selectedPackage is not null )
 							{
-								<Button tooltip="Spawn From Asset.Party Package" @onclick=@(() => spawnMap(activePackage))><i>downloading</i> Spawn </Button>
+								<Button style="margin-top:10px;" tooltip="Spawn From Asset.Party Package" @onclick=@(() => spawnMap(activePackage))><i>downloading</i> Spawn </Button>
+								@if (Manager.Maps.TryGetValue($"{maplist.selectedPackage?.name}", out var map) && map.textureErrors.Count() != 0) // For goldsrc
+								{
+									<Button tooltip="If there are texture errors (because of missing wad), we will find out as similar as textures from this package for you, if not work, may be the data of client to server is too large, fix soon" @onclick=@(() => spawnAssetPartyMapWithFoundedWads(activePackage, maplist.selectedPackage.Value))><i>download_for_offline</i> Try To Find Textures </Button>
+								}
 							}
 						}
 					</span>
@@ -320,7 +324,7 @@
 				}	
 				@if (externalMapList != null && externalMapList.IsValid() && Manager.Maps.TryGetValue($"maps/{externalMapList.selectedMap}", out var map) && map.textureErrors.Count() != 0) // For goldsrc
 				{
-					<Button tooltip="If there are texture errors, we will find out as similar as textures for you, if not work, may be the data of client to server is too large, fix soon" @onclick=@(() => spawnUrlMapWithSuggestedWads(externalMirrorList.selectedMirror, externalMapList.selectedMap))><i>download_for_offline</i> Try To Spawn With Similar Textures </Button>
+					<Button tooltip="If there are texture errors (because of missing wad), we will find out as similar as textures for you, if not work, may be the data of client to server is too large, fix soon" @onclick=@(() => spawnUrlMapWithSuggestedWads(externalMirrorList.selectedMirror, externalMapList.selectedMap))><i>download_for_offline</i> Try To Spawn With Similar Textures </Button>
 				}
 				@(externalMapList != null ? $"Found maps: {externalMapList.maps.Count()}" : "")
 			</div>
@@ -466,9 +470,9 @@
 		Notify.Create($"Mount succied ( {package.FullIdent} )", Notify.NotifyType.Info);
 
 	}
-	async void spawnMap(Package package)
+	async void spawnMap(Package package, string wadlist = "")
 	{
-		Manager.adminConCommandHandler(0, activePackage.FullIdent, Util.PathToMapName(maplist.selectedPackage?.bsp), spawnPos: Manager.clientSettings.spawnPos, clearTextureCache: Manager.clientSettings.clearTextureCache, clearMaterialCache: Manager.clientSettings.clearMaterialCache, clearMaps: Manager.clientSettings.clearMaps);
+		Manager.adminConCommandHandler(0, activePackage.FullIdent, Util.PathToMapName(maplist.selectedPackage?.bsp), spawnPos: Manager.clientSettings.spawnPos, clearTextureCache: Manager.clientSettings.clearTextureCache, clearMaterialCache: Manager.clientSettings.clearMaterialCache, clearMaps: Manager.clientSettings.clearMaps, wadlist: wadlist);
 		Notify.Create($"Starting to spawn ( {Util.PathToMapName(maplist.selectedPackage?.bsp)} )", Notify.NotifyType.Info);
 	}
 	async void spawnMapUrl( string baseurl, string mapname, string wadlist )
@@ -569,6 +573,55 @@
 		Notify.Create($"Wads of found similar textures: {string.Join(", ", listRequiredTexture)}");
 
 		spawnMapUrl(selectedmirror, $"maps/{selectedmap}", string.Join(",", listRequiredTexture));
+	}
+
+	// For goldsrc
+	async void spawnAssetPartyMapWithFoundedWads(Package package, Manager.ContentPackage.PackageInfo activePackage)
+	{
+		// Double checking
+		if (!Manager.Maps.TryGetValue($"{activePackage.name}", out var map) || map.textureErrors.Count() == 0)
+		{
+			Notify.Create("Map or texture errors not found, will not spawn", Notify.NotifyType.Error);
+			return;
+		}
+
+		// We will mount again because need its filesystem
+		var filesystem = await package.MountAsync(false);
+		if (filesystem == null)
+		{
+			Notify.Create("Mount failed, trying mounted filesystem", Notify.NotifyType.Error);
+			return;
+		}
+
+		var wadlist = GoldSrc.WAD.findWadsAndGenerateWadIndex(filesystem);
+		
+		List<string> listRequiredWads = new();
+		var texErrors = map.textureErrors.ToList();
+
+		foreach(var wad in wadlist )
+		{
+			if (texErrors.Count() == 0)
+				break;
+
+			foreach(var texname in wad.Value )
+			{
+				//foreach (var tex in map.textureErrors)
+				if (texErrors.Any(x => x == texname))
+				{
+					listRequiredWads.Add(wad.Key);
+					texErrors.Remove(texname);
+				}
+			}
+		}
+
+		listRequiredWads = listRequiredWads.Distinct().ToList();
+
+		Notify.Create($"Wads of found similar textures: {string.Join(", ", listRequiredWads)}");
+
+		if (texErrors.Count() != 0)
+			Notify.Create($"Unfortunately, some textures still not exists; {string.Join(", ", texErrors)}");
+
+		spawnMap(package, string.Join(",", listRequiredWads));
 	}
 
 	void toggleMenuHandler()
