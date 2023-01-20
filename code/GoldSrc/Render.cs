@@ -140,6 +140,13 @@ namespace MapParser.GoldSrc
 					Notify.Create( "Palette offset length is too much", Notify.NotifyType.Error );
 					return (null, 0, 0, 0);
 				}
+
+				if( palOffs > reader.BaseStream.Length ) // Why is happened, idk
+				{
+					Notify.Create( "Palette offset is beyond the data length", Notify.NotifyType.Error );
+					return (null, 0, 0, 0);
+				}
+
 				stream.Seek( palOffs + 0x00, SeekOrigin.Begin );
 				var palSize = reader.ReadUInt16();
 				if ( palSize != 0x100 )
@@ -224,6 +231,7 @@ namespace MapParser.GoldSrc
 			{
 				return Texture.Transparent;
 			}
+
 			var texture = Texture.Create( textureData.Item2, textureData.Item3 );
 			texture.WithData( data );
 			texture.WithMips( 3 ); //3 or 4?
