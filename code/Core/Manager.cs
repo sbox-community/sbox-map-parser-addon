@@ -37,7 +37,6 @@ namespace MapParser
 
 		public struct MapObjects
 		{
-			public SceneObject so { get; set; }
 			public ModelEntity ent { get; set; }
 			//public PhysicsBody body { get; set; }
 			public SpawnParameter spawnParameter { get; set; }
@@ -82,7 +81,7 @@ namespace MapParser
 
 			if ( !caller.IsListenServerHost && ConsoleSystem.GetValue( "sv_cheats", "0" ) == "0" )
 			{
-				Notify.CreateCL( To.Single(caller), "sv_cheats must be 1", Notify.NotifyType.Error );
+				Notify.CreateCL( To.Single( caller ), "sv_cheats must be 1", Notify.NotifyType.Error );
 				return;
 			}
 
@@ -100,9 +99,9 @@ namespace MapParser
 					pos = caller.AimRay.Position;
 				else if ( spawnPos == 2 ) // The Entity's position
 				{
-					var findLast = MPEntity.All.Where(x=>x.GetType()==typeof(MPEntity)).LastOrDefault();
+					var findLast = MPEntity.All.Where( x => x.GetType() == typeof( MPEntity ) ).LastOrDefault();
 
-					if( findLast != null )
+					if ( findLast != null )
 						pos = findLast.Position;
 				}
 
@@ -119,10 +118,13 @@ namespace MapParser
 					clients = To.Everyone
 				};
 
+				if ( !string.IsNullOrEmpty( wadlist ) )
+					wadlist = Util.Decompress<string>( Convert.FromBase64String( wadlist ) );
+
 				if ( flag == 0 )
 				{
 					// If we have wadlist from parameter, we can use
-					if( !string.IsNullOrEmpty( wadlist ) )
+					if ( !string.IsNullOrEmpty( wadlist ) )
 						settings.wadList = wadlist.Split( "," ).ToList();
 
 					settings.assetparty_version = true;
@@ -170,7 +172,7 @@ namespace MapParser
 			{
 				if ( mainMenu != null && mainMenu.IsValid() )
 					mainMenu.AddClass( "Open" );
-					(mainMenu as Menu).firstOpen();
+				(mainMenu as Menu).firstOpen();
 			} );
 		}
 
@@ -201,7 +203,7 @@ namespace MapParser
 			settings.fileSystem = filesystem;
 			if ( Game.IsClient )
 			{
-				settings.wadList.AddRange( map.goldsrc_wads.SelectMany( x => x.Values ).ToList());
+				settings.wadList.AddRange( map.goldsrc_wads.SelectMany( x => x.Values ).ToList() );
 
 				// If there is a .res file, we can obtain the required wads of the map
 				if ( filesystem.FileExists( $"{settings.mapPath.Replace( ".bsp", ".res.txt" )}" ) )
@@ -381,8 +383,9 @@ namespace MapParser
 				mapObject.ent.SetupPhysicsFromModel( PhysicsMotionType.Static );
 
 			mapObject.ent.Position = settings.position;
+			mapObject.ent.Rotation = Rotation.From( settings.angles );
 			mapObject.ent.PhysicsEnabled = false;
-			mapObject.ent.EnableDrawing = false;
+			mapObject.ent.EnableDrawing = Game.IsClient;
 			mapObject.ent.Tags.Add( "solid" );
 			mapObject.ent.EnableTraceAndQueries = true;
 			mapObject.ent.Predictable = false;
@@ -392,10 +395,8 @@ namespace MapParser
 
 			if ( Game.IsClient )
 			{
-				mapObject.so = new SceneObject( Game.SceneWorld, mapObject.ent.Model, new Transform( settings.position, Rotation.From( settings.angles ) ) );
-
 				mapObject.textureErrors = lastTextureErrors.ToList();
-				if( mapObject.textureErrors.Count() != 0 )
+				if ( mapObject.textureErrors.Count() != 0 )
 					Notify.Create( "Similar textures are found! You can try to spawn with similar of them..", Notify.NotifyType.Info );
 				lastTextureErrors.Clear();
 
@@ -449,7 +450,7 @@ namespace MapParser
 			}
 			else
 			{
-				if(!string.IsNullOrEmpty(wadlist))
+				if ( !string.IsNullOrEmpty( wadlist ) )
 					settings.wadList = wadlist.Split( "," ).ToList();
 			}
 
@@ -463,10 +464,6 @@ namespace MapParser
 		{
 			if ( Maps.TryGetValue( mapName, out var map ) )
 			{
-
-				if ( map.so != null && map.so.IsValid() )
-					map.so.Delete();
-
 				if ( map.ent != null && map.ent.IsValid() )
 					map.ent.Delete();
 
@@ -521,7 +518,7 @@ namespace MapParser
 			{
 				if ( !isMPContentPackage( package, filesystem ) )
 				{
-					Notify.Create( "Map information not found", Notify.NotifyType.Error);
+					Notify.Create( "Map information not found", Notify.NotifyType.Error );
 					return new();
 				}
 
@@ -560,7 +557,7 @@ namespace MapParser
 						map.Value.spawnParameter.clearTextureCache,
 						map.Value.spawnParameter.packageFullIdent,
 						map.Value.spawnParameter.assetparty_version,
-						string.Join(",", map.Value.spawnParameter.wadList) );
+						string.Join( ",", map.Value.spawnParameter.wadList ) );
 		}
 
 		[Event.Client.Frame]
@@ -586,9 +583,9 @@ namespace MapParser
 		public static void saveSettings()
 		{
 			FileSystem.Data.WriteAllText( "map_parser_cl_settings.txt", JsonSerializer.Serialize( clientSettings ) );
-			Notify.Create("Settings have been saved!");
+			Notify.Create( "Settings have been saved!" );
 		}
-		
+
 		/*public static byte[] wadWriter( List<string> wadLists )
 		{
 			//byte wadData = new byte[wadLists.Count];

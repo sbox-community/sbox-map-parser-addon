@@ -44,10 +44,10 @@ namespace MapParser
 				if ( !matFound ) //there also should be materialData comparison
 				{
 					var found = TextureCache.textureData.TryGetValue( texName, out var infoFromTextureData );
-					
+
 					if ( !found )
 					{
-						Notify.Create( $"Texture not found: {texName}" , Notify.NotifyType.Error );
+						Notify.Create( $"Texture not found: {texName}", Notify.NotifyType.Error );
 
 						Manager.lastTextureErrors.Add( texName );
 
@@ -57,7 +57,7 @@ namespace MapParser
 
 					var mat = Material.Create( matName, "simple" ); //goldsrc_render
 					mat.Set( "Color", infoFromTextureData.texture );
-					mat.Set( "Normal", Texture.Invalid );
+					mat.Set( "Normal", Texture.White );
 
 					//mat.Set( "TextureDiffuse", infoFromTextureData.texture );
 					//mat.Set( "TextureLightmap", lightmap );
@@ -115,7 +115,7 @@ namespace MapParser
 				{
 					if ( (!empty && kvp.Key == texname) || empty )
 					{
-						if ( kvp.Key != null && textureData.TryGetValue( kvp.Key, out var texData) && texData.texture != null )
+						if ( kvp.Key != null && textureData.TryGetValue( kvp.Key, out var texData ) && texData.texture != null )
 							textureData[kvp.Key].texture.Dispose();
 
 						if ( !empty )

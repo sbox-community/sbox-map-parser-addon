@@ -108,6 +108,18 @@ namespace MapParser
 		{
 			return string.Concat( filename.Split( Path.GetInvalidPathChars() ) );
 		}
+		public static byte[] Compress<T>( T data )
+		{
+			using var stream = new MemoryStream();
+			using var deflate = new DeflateStream( stream, CompressionLevel.Optimal );
+
+			var serialized = JsonSerializer.SerializeToUtf8Bytes( data );
+
+			deflate.Write( serialized );
+			deflate.Close();
+
+			return stream.ToArray();
+		}
 		public static T Decompress<T>( byte[] bytes )
 		{
 			using var outputStream = new MemoryStream();
@@ -148,18 +160,6 @@ namespace MapParser
 					return Color.FromBytes( 255, 0, descending );
 			}
 		}
-		/*public static byte[] Compress<T>( T data )
-		{
-			using var stream = new MemoryStream();
-			using var deflate = new DeflateStream( stream, CompressionLevel.Optimal );
-
-			var serialized = JsonSerializer.SerializeToUtf8Bytes( data );
-
-			deflate.Write( serialized );
-			deflate.Close();
-
-			return stream.ToArray();
-		}*/
 		/*public static Dictionary<string,List<string>> wadIndex = new Dictionary<string,List<string>>();
 		public static void generateWadIndex()
 		{

@@ -472,11 +472,17 @@
 	}
 	async void spawnMap(Package package, string wadlist = "")
 	{
+		if (!string.IsNullOrEmpty(wadlist))
+			wadlist = Convert.ToBase64String(Util.Compress<string>(wadlist));
+
 		Manager.adminConCommandHandler(0, activePackage.FullIdent, Util.PathToMapName(maplist.selectedPackage?.bsp), spawnPos: Manager.clientSettings.spawnPos, clearTextureCache: Manager.clientSettings.clearTextureCache, clearMaterialCache: Manager.clientSettings.clearMaterialCache, clearMaps: Manager.clientSettings.clearMaps, wadlist: wadlist);
 		Notify.Create($"Starting to spawn ( {Util.PathToMapName(maplist.selectedPackage?.bsp)} )", Notify.NotifyType.Info);
 	}
 	async void spawnMapUrl( string baseurl, string mapname, string wadlist )
 	{
+		if (!string.IsNullOrEmpty(wadlist))
+			wadlist = Convert.ToBase64String(Util.Compress<string>(wadlist));
+
 		Manager.adminConCommandHandler(3, mapName: mapname, baseUrl: baseurl, wadlist: wadlist, savefolder: "goldsrc", spawnPos: Manager.clientSettings.spawnPos, clearTextureCache: Manager.clientSettings.clearTextureCache, clearMaterialCache: Manager.clientSettings.clearMaterialCache, clearMaps: Manager.clientSettings.clearMaps);
 		Notify.Create($"Starting to spawn ( {mapname} - {baseurl})", Notify.NotifyType.Info);
 	}
