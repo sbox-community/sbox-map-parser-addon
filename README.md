@@ -11,17 +11,11 @@ For now, only supported to GoldSrc. There are ~17k map you can spawn and play th
 
 Known issues;
 - Physical and walking animation issues on the spawned map
-- Lighting and non-transparent texture problems ( when figuring out to implement the shader with map's lightmap, will be fixed )
-- Freezing until creating textures are finished ( waiting for above shader implementation ) 
-- UI delay/freezing problems ( when addons system get fixed, might be fixed )
-
+- Some issues on physics collision and mesh rendering
 ___
 
 Possible updates;
-- Lightmap ( already implemented, waiting for the shader )
-- Removing of env_sprite, water or trigger's physics
 - Functionality of some entities ( like ambient sounds, buttons, doors or lights )
-- Sky ( need a shader or render hook )
 - Demo player ( for goldsrc )
 - Model and Particle parser ( for goldsrc )
 - Another game map parsers ( maybe source engine? )
@@ -44,14 +38,7 @@ How to publish my map;
         "bsp": "/maps/fy_poolday.bsp",
         "offset": "0,0,0",
         "angles": "0,0,0",
-        "dependencies": "",
-        "goldsrc_wads": [
-            {
-                  "de_vegas": "/de_vegas.wad",
-                  "cs_office": "/cs_office.wad",
-                  "urban_final": "/urban_final.wad"
-            }
-        ]
+        "dependencies": ""
     }
 ]
 ```
