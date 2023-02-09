@@ -29,6 +29,45 @@
 			sound-in: ui.popup.message.open;
 		}
 
+		&.Finished {
+		transition: all 1.0s ease-out;
+			top: 20%;
+			opacity: 0;
+			sound-in: ui.popup.message.open;
+
+			.content
+			{
+				margin: 0px 0px 0px 10px;
+				border-radius: 2px;
+				align-content: center;
+				align-items: center;
+				height: 100%;
+				padding: 10px;
+				flex-shrink: 0;
+				background-color: green;
+				text-shadow: 0 0 2px #000000,0 0 1px rgba(1,1,1,1);
+			}
+		}
+
+		&.Failed {
+		transition: all 1.0s ease-out;
+			top: 20%;
+			opacity: 0;
+			sound-in: ui.popup.message.open;
+
+			.content
+			{
+				margin: 0px 0px 0px 10px;
+				border-radius: 2px;
+				align-content: center;
+				align-items: center;
+				height: 100%;
+				padding: 10px;
+				flex-shrink: 0;
+				background-color: red;
+				text-shadow: 0 0 2px #000000,0 0 1px rgba(1,1,1,1);
+			}
+		}
 		.content{
 			margin: 0px 0px 0px 10px;
 			border-radius: 2px;
@@ -65,13 +104,15 @@
 		return HashCode.Combine(note);
 	}
 
-	public static void CreateInfo( string info, float timeleft = 60f )
+	public static DownloadNotification? CreateInfo(string info, float timeleft = 60f)
 	{
 		if(Game.IsServer)
 		{
 			// Send to info the spawner of the map
-			return;
+			return null;
 		}
+
+		Log.Info( info );
 
 		RemoveAll();
 		DownloadNotification panel = Game.RootPanel.FindRootPanel().AddChild<DownloadNotification>();
@@ -80,6 +121,37 @@
 		panel.Start();
 
 		references.Add( panel );
+		return panel;
+	}
+	public void FinishDownload(string note = "Download successful")
+	{
+		AddClass("Finished");
+
+		this.note = note;
+		references.Remove(this);
+
+		Log.Info( note );
+
+		_ = MapParser.Util.Timer(1500, () =>
+		{
+			if (this != null && this.IsValid())
+				this.Delete();
+		});
+	}
+
+	public void FailedDownload(string note = "Download failed")
+	{
+		AddClass("Failed");
+		this.note = note;
+		references.Remove(this);
+
+		Log.Info( note );
+
+		_ = MapParser.Util.Timer(1500, () =>
+		{
+			if (this != null && this.IsValid())
+				this.Delete();
+		});
 	}
 
 	public void Start()
@@ -103,7 +175,7 @@
 				this.Delete();
 		});
 	}
-	static void RemoveAll()
+	public static void RemoveAll()
 	{
 		foreach (var panel in references)
 			panel.Delete();

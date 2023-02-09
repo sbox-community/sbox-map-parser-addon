@@ -164,6 +164,7 @@
 								width:10%;
 								align-self: flex-end;
 								padding-right:5px;
+								margin-right:5px;
 								font-size:13px;
 							}
 						}
@@ -259,7 +260,7 @@
 								<span class="owner">By @package.Org.Title</span>
 							</span>
 							<span class="rightinfo">
-								<span><i>show_chart</i></span><!--package.Usage.Total.Users-->
+								<span><i>show_chart</i>@package.Usage.Total.Users </span><!--package.Usage.Total.Users-->
 							</span>
 						</span>
 					}
@@ -290,7 +291,7 @@
 							@if ( maplist.selectedPackage is not null )
 							{
 								<Button style="margin-top:10px;" tooltip="Spawn From Asset.Party Package" @onclick=@(() => spawnMap(activePackage))><i>downloading</i> Spawn </Button>
-								@if (Manager.Maps.TryGetValue($"{maplist.selectedPackage?.name}", out var map) && map.textureErrors.Count() != 0) // For goldsrc
+								@if (Manager.Maps.TryGetValue($"{maplist.selectedPackage?.name}", out var map)  && map.textureErrors != null && map.textureErrors.Count() != 0) // For goldsrc
 								{
 									<Button tooltip="If there are texture errors (because of missing wad), we will find out as similar as textures from this package for you, if not work, may be the data of client to server is too large, fix soon" @onclick=@(() => spawnAssetPartyMapWithFoundedWads(activePackage, maplist.selectedPackage.Value))><i>download_for_offline</i> Try To Find Textures </Button>
 								}
@@ -322,7 +323,7 @@
 				{
 					<Button tooltip="Spawn Map" @onclick=@(() => spawnMapUrl(externalMirrorList.selectedMirror,$"maps/{externalMapList.selectedMap}",""))><i>downloading</i> Spawn </Button>
 				}	
-				@if (externalMapList != null && externalMapList.IsValid() && Manager.Maps.TryGetValue($"maps/{externalMapList.selectedMap}", out var map) && map.textureErrors.Count() != 0) // For goldsrc
+				@if (externalMapList != null && externalMapList.IsValid() && Manager.Maps.TryGetValue($"maps/{externalMapList.selectedMap}", out var map) && map.textureErrors != null && map.textureErrors.Count() != 0) // For goldsrc
 				{
 					<Button tooltip="If there are texture errors (because of missing wad), we will find out as similar as textures for you, if not work, may be the data of client to server is too large, fix soon" @onclick=@(() => spawnUrlMapWithSuggestedWads(externalMirrorList.selectedMirror, externalMapList.selectedMap))><i>download_for_offline</i> Try To Spawn With Similar Textures </Button>
 				}
@@ -336,9 +337,10 @@
 					<TextureList @ref="texturelist"></TextureList>
 					<div @ref="canvas" style="top:10px;width:256px;height:256px;box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);"></div>
 				</div>
-				<div style="height:5%;margin:10px;">Cached Texture: @Render.TextureCache.textureData.Count()   Cached Material: @Render.MaterialCache.materialData.Count()</div>
-				<Button style="left:10px;width:30%;" tooltip="Clear the texture cache, will not recreate.." @onclick=@(() => Render.TextureCache.clearTexture())><i>remove_circle</i> Clear Texture Cache ( Local ) </Button>
-				<Button style="left:10px;width:30%;" tooltip="Clear the material cache, will not recreate.." @onclick=@(() => Render.MaterialCache.clearMaterial())><i>remove_circle</i> Clear Material Cache ( Local ) </Button>
+				<div style="height:5%;margin:10px;">Selected Texture's WAD: @selectedWAD</div>
+				<div style="height:5%;margin:10px;top:0%">Cached Texture: @Render.TextureCache.textureData.Count()   Cached WAD: @GoldSrc.TextureCache.WADCache.Count()</div>
+				<Button style="left:10px;width:30%;" tooltip="Clear the texture cache.." @onclick=@(() => Render.TextureCache.clearTexture())><i>remove_circle</i> Clear Texture Cache ( Local ) </Button>
+				<Button style="left:10px;width:30%;" tooltip="Clear the WAD cache.." @onclick=@(() => GoldSrc.TextureCache.clearWAD())><i>remove_circle</i> Clear WAD Cache ( Local ) </Button>
 			</div>
 		</div>
 		<div style="display:none;align-items:center;align-content:center;flex-direction:column;justify-content:center;width:100%" class="tab_5" @ref="tab_5">
@@ -346,23 +348,17 @@
 			<div style="width:100%;justify-content:center;">	
 				<Button class="@(Manager.clientSettings.spawnPos == 0)" tooltip="Spawn map under me" @onclick=@(() => {Manager.clientSettings.spawnPos = 0;Manager.saveSettings();})><i>settings_suggest</i> Under me </Button>
 				<Button class="@(Manager.clientSettings.spawnPos == 1)" tooltip="Spawn map my aim position" @onclick=@(() => {Manager.clientSettings.spawnPos = 1;Manager.saveSettings();})><i>settings_suggest</i> Aim Position </Button>
-				<Button class="@(Manager.clientSettings.spawnPos == 2)" tooltip="Spawn map under of the entity of this addon" @onclick=@(() => {Manager.clientSettings.spawnPos = 2;Manager.saveSettings();})><i>settings_suggest</i> Under of the Entity </Button>
-				<Button class="@(Manager.clientSettings.spawnPos == 3)" tooltip="Spawn map the center of the map" @onclick=@(() => {Manager.clientSettings.spawnPos = 3;Manager.saveSettings();})><i>settings_suggest</i> 0,0,0 (World Center) </Button>
-			</div>
-			<div style="margin-top:15px">Clear Texture Cache;</div>
-			<div style="width:100%;justify-content:center;">
-				<Button class="@(!Manager.clientSettings.clearTextureCache)" tooltip="Never clear of the cache" @onclick=@(() => {Manager.clientSettings.clearTextureCache = false;Manager.saveSettings();})><i>settings_suggest</i> Never </Button>
-				<Button class="@(Manager.clientSettings.clearTextureCache)" tooltip="Always clear every new map spawning" @onclick=@(() => {Manager.clientSettings.clearTextureCache = true;Manager.saveSettings();})><i>settings_suggest</i> Every New Spawn </Button>
-			</div>
-			<div style="margin-top:15px">Clear Material Cache;</div>
-			<div style="width:100%;justify-content:center;">
-				<Button class="@(!Manager.clientSettings.clearMaterialCache)" tooltip="Never clear of the cache" @onclick=@(() => {Manager.clientSettings.clearMaterialCache = false;Manager.saveSettings();})><i>settings_suggest</i> Never </Button>
-				<Button class="@(Manager.clientSettings.clearMaterialCache)" tooltip="Always clear every new map spawning" @onclick=@(() => {Manager.clientSettings.clearMaterialCache = true;Manager.saveSettings();})><i>settings_suggest</i> Every New Spawn </Button>
+				<Button class="@(Manager.clientSettings.spawnPos == 3)" tooltip="Spawn map the center of the map" @onclick=@(() => {Manager.clientSettings.spawnPos = 2;Manager.saveSettings();})><i>settings_suggest</i> 0,0,0 (World Center) </Button>
 			</div>
 			<div style="margin-top:15px">Clear Maps;</div>
 			<div style="width:100%;justify-content:center;">
 				<Button class="@(!Manager.clientSettings.clearMaps)" tooltip="Never clear of the maps" @onclick=@(() => {Manager.clientSettings.clearMaps = false;Manager.saveSettings();})><i>settings_suggest</i> Never </Button>
 				<Button class="@(Manager.clientSettings.clearMaps)"  tooltip="Always clear every new map spawning" @onclick=@(() => {Manager.clientSettings.clearMaps = true;Manager.saveSettings();})><i>settings_suggest</i> Every New Spawn </Button>
+			</div>
+			<div style="margin-top:15px">Pixelation;</div>
+			<div style="width:100%;justify-content:center;">
+				<Button class="@(!Manager.clientSettings.pixelation)" tooltip="Use filtered textures" @onclick=@(() => {Manager.clientSettings.pixelation = false;Manager.saveSettings();})><i>settings_suggest</i> Disabled </Button>
+				<Button class="@(Manager.clientSettings.pixelation)"  tooltip="Use Half-Life style point filteration, like an old engine" @onclick=@(() => {Manager.clientSettings.pixelation = true;Manager.saveSettings();})><i>settings_suggest</i> Enabled </Button>
 			</div>
 		</div>
 		<div style="display:none;" class="tab_6" @ref="tab_6">
@@ -397,6 +393,7 @@
 	public Panel tab_4 { get; set; }
 	public Panel tab_5 { get; set; }
 	public Panel tab_6 { get; set; }
+	public string selectedWAD = "None";
 
 	List<Manager.ContentPackage.PackageInfo>? updateMaplist = null;
 	float turn = 0;
@@ -449,16 +446,16 @@
 			return;
 		}
 
-		DownloadNotification.CreateInfo($"Downloading.. ( {package.FullIdent} )");
+		_ = DownloadNotification.CreateInfo($"Downloading.. ( {package.FullIdent} )");
 
 		var filesystem = await package.MountAsync(false);
 		if (filesystem == null)
 		{
 			Notify.Create("Mount failed, trying mounted filesystem", Notify.NotifyType.Error);
-			DownloadNotification.CreateInfo($"Failed to download ( {package.FullIdent} )", 10f);
+			_ = DownloadNotification.CreateInfo($"Failed to download ( {package.FullIdent} )", 10f);
 		}
 		else
-			DownloadNotification.CreateInfo($"Download successful ( {package.FullIdent} )", 5f);
+			_ = DownloadNotification.CreateInfo($"Download successful ( {package.FullIdent} )", 5f);
 
 		var content = Manager.ContentPackage.retrieveContent(package, filesystem == null ? FileSystem.Mounted : filesystem);
 
@@ -475,16 +472,16 @@
 		if (!string.IsNullOrEmpty(wadlist))
 			wadlist = Convert.ToBase64String(Util.Compress<string>(wadlist));
 
-		Manager.adminConCommandHandler(0, activePackage.FullIdent, Util.PathToMapName(maplist.selectedPackage?.bsp), spawnPos: Manager.clientSettings.spawnPos, clearTextureCache: Manager.clientSettings.clearTextureCache, clearMaterialCache: Manager.clientSettings.clearMaterialCache, clearMaps: Manager.clientSettings.clearMaps, wadlist: wadlist);
-		Notify.Create($"Starting to spawn ( {Util.PathToMapName(maplist.selectedPackage?.bsp)} )", Notify.NotifyType.Info);
+		Manager.adminConCommandHandler(0, activePackage.FullIdent, Util.PathToMapName(maplist.selectedPackage?.bsp), spawnPos: Manager.clientSettings.spawnPos, clearMaps: Manager.clientSettings.clearMaps, wadlist: wadlist);
+		Notify.Create($"Starting to spawn, please wait ( {Util.PathToMapName(maplist.selectedPackage?.bsp)} )", Notify.NotifyType.Info);
 	}
 	async void spawnMapUrl( string baseurl, string mapname, string wadlist )
 	{
 		if (!string.IsNullOrEmpty(wadlist))
 			wadlist = Convert.ToBase64String(Util.Compress<string>(wadlist));
 
-		Manager.adminConCommandHandler(3, mapName: mapname, baseUrl: baseurl, wadlist: wadlist, savefolder: "goldsrc", spawnPos: Manager.clientSettings.spawnPos, clearTextureCache: Manager.clientSettings.clearTextureCache, clearMaterialCache: Manager.clientSettings.clearMaterialCache, clearMaps: Manager.clientSettings.clearMaps);
-		Notify.Create($"Starting to spawn ( {mapname} - {baseurl})", Notify.NotifyType.Info);
+		Manager.adminConCommandHandler(3, mapName: mapname, baseUrl: baseurl, wadlist: wadlist, savefolder: "goldsrc", spawnPos: Manager.clientSettings.spawnPos, clearMaps: Manager.clientSettings.clearMaps);
+		Notify.Create($"Starting to spawn, please wait ( {mapname} - {baseurl})", Notify.NotifyType.Info);
 	}
 	void addonList()
 	{
@@ -534,11 +531,14 @@
 	void initializeStaticInfoFiles()
 	{
 		if(Manager.MapMirrors.Count() == 0)
-			Manager.MapMirrors.Add(("http://www.half-life.fr/cs/mapsmirror/", "goldsrc", Util.Decompress<string>(Convert.FromBase64String(MapParser.GoldSrc.MirrorData.maplist)).Split('\n').ToList()));
+		{
+			Manager.MapMirrors.Add(("http://www.half-life.fr/cs/mapsmirror/", "goldsrc", new()));
+			Manager.MapMirrors.Add(("http://tek.site.nfoservers.com/server/", "dod", new()));
+		}
 
 		//GoldSrc
 		if (GoldSrc.WAD.wadIndex.Count() == 0)
-			GoldSrc.WAD.wadIndex = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(Util.Decompress<string>(Convert.FromBase64String(MapParser.GoldSrc.MirrorData.wadlist)));
+			GoldSrc.WAD.wadIndex = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(Util.Decompress<string>(Convert.FromBase64String(MapParser.GoldSrc.StaticData.wadlist)));
 	}
 	List<string> PathToWadName(List<string> wadList)
 	{
@@ -655,7 +655,7 @@
 	{
 		openTab(tab_1);
 	}
-	void CloseMenu()
+	public void CloseMenu()
 	{
 		Style.PointerEvents = PointerEvents.None;
 		RemoveClass("Open");

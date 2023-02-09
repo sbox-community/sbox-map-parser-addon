@@ -122,5 +122,8 @@
 		canvas.Style.BackgroundSizeY = Length.Pixels(packagedata.texture.Height);
 		canvas.Style.BackgroundPositionX = Length.Fraction((1f - (packagedata.texture.Width / 256f))*0.5f);
 		canvas.Style.BackgroundPositionY = Length.Fraction((1f - (packagedata.texture.Height / 256f)) * 0.5f);
+
+		if (Manager.mainMenu != null && Manager.mainMenu.IsValid())
+			(Manager.mainMenu as Menu).selectedWAD = packagedata.WADname;
 	}
 }

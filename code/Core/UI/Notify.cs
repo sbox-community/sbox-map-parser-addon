@@ -70,7 +70,7 @@ namespace MapParser
 		}
 		public static void tryRemoveNotificationPanel()
 		{
-			if ( All.Count == 0 )
+			if ( All.Count == 0 && notificationPanel != null && notificationPanel.IsValid() )
 				notificationPanel.Delete();
 		}
 	}

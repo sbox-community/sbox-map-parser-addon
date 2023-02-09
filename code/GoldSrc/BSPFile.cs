@@ -1,8 +1,11 @@
 using Sandbox;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using static MapParser.GoldSrc.BSPFile;
 using static MapParser.Manager;
 
 namespace MapParser.GoldSrc
@@ -28,6 +31,24 @@ namespace MapParser.GoldSrc
 			MODELS = 14,
 		};
 
+		public enum leafContents
+		{
+			CONTENTS_EMPTY = -1,
+			CONTENTS_SOLID = -2,
+			CONTENTS_WATER = -3,
+			CONTENTS_SLIME = -4,
+			CONTENTS_LAVA = -5,
+			CONTENTS_SKY = -6,
+			CONTENTS_ORIGIN = -7,
+			CONTENTS_CLIP = -8,
+			CONTENTS_CURRENT_0 = -9,
+			CONTENTS_CURRENT_90 = -10,
+			CONTENTS_CURRENT_180 = -11,
+			CONTENTS_CURRENT_270 = -12,
+			CONTENTS_CURRENT_UP = -13,
+			CONTENTS_CURRENT_DOWN = -14,
+			CONTENTS_TRANSLUCENT = -15
+		};
 		public struct TexinfoMapping
 		{
 			public Vector4 s { get; set; }
@@ -61,6 +82,14 @@ namespace MapParser.GoldSrc
 			public List<SurfaceLightmapData> lightmapData { get; set; }
 		}
 
+		public struct Leaf
+		{
+			public int nVisOffset { get; set; }
+			public BBox BBox { get; set; }
+			public List<int> faceIndex { get; set; }
+			public List<bool> visLeaves { get; set; }
+
+		}
 		public struct Face
 		{
 			public int index { get; set; }
@@ -71,25 +100,78 @@ namespace MapParser.GoldSrc
 		// For s&box
 		public struct meshData
 		{
-			public List<SimpleVertex> vertices { get; set; }
+			public List<Vertex> vertices { get; set; }
 			public List<int> indices { get; set; }
 			public string textureName { get; set; }
-			public int id { get; set; }
+			public int faceIndex { get; set; }
+		}
+
+		public struct entityMeshData
+		{
+			public List<Vertex> vertices { get; set; }
+			public List<int> indices { get; set; }
+			public string textureName { get; set; }
+			public int faceIndex { get; set; }
+			public EntityParser.EntityData? entity { get; set; }
+			public Vector3 nMins { get; set; }
+			public Vector3 nMaxs { get; set; }
+			public Vector3 vOrigin { get; set; }
 		}
 
 		public int version { get; set; }
-		//public int[] indexData { get; set; }
-		//public float[] vertexData { get; set; }
+		public int[] indexData { get; set; }
+		public double[] vertexData { get; set; }
 		public List<Surface> surfaces { get; set; } = new();
 		public List<EntityParser.EntityData> entities { get; set; }
 		public List<byte[]> extraTexData = new List<byte[]>();
 		public LightmapPackerPage lightmapPackerPage { get; set; } = new LightmapPackerPage( 2048, 2048 );
+		public Texture lightmap { get; set; }
 		public byte[] buffer { get; set; }
+		public string? skyname = null;
+		public List<string>? WADList = null;
+		public List<Leaf> leaves { get; set; } = new();
+		public List<int> entityMeshStartIndex { get; set; } = new();
 
 		// For sbox
 		public List<meshData> meshDataList = new();
+		public List<entityMeshData> entityMeshDataList = new();
+		//public List<string> textureList = new();
 
-		public BSPFile( SpawnParameter settings )
+		// In order to stop rendering and creating its physics. (classname, Client, Server)
+		public static Dictionary<string, (bool, bool)> blacklistEnts = new() { 
+			{ "func_bomb_target", (true, true) },
+			{ "func_buyzone", (true, true) },
+			{ "cycler_sprite", (false, true) },
+			{ "func_illusionary", (false, true) },
+			{ "trigger_", (true, true) },
+			{ "func_water", (false, true) },
+			{ "func_ladder", (true, true) },
+		};
+
+		public static byte[] DecodeRLE( byte[] rleData )
+		{
+			List<byte> decodedData = new List<byte>();
+
+			for ( int i = 0; i < rleData.Length; i++ )
+			{
+				byte currentByte = rleData[i];
+				int repeatCount = currentByte & 0x3F;
+				byte repeatedByte = (byte)(currentByte >> 6);
+				if ( repeatCount == 0 )
+				{
+					repeatCount = rleData[++i];
+					repeatedByte = rleData[++i];
+				}
+
+				for ( int j = 0; j < repeatCount; j++ )
+				{
+					decodedData.Add( repeatedByte );
+				}
+			}
+
+			return decodedData.ToArray();
+		}
+		public BSPFile( ref SpawnParameter settings )
 		{
 			var filePath = $"{settings.mapPath}{(settings.assetparty_version ? ".txt" : "")}";
 
@@ -117,6 +199,8 @@ namespace MapParser.GoldSrc
 				if ( version != 30 )
 					Notify.Create( $"Version is not 30", Notify.NotifyType.Error );
 			}
+
+			PreparingIndicator.Update();
 
 			var texinfoa = new List<Texinfo>();
 
@@ -172,13 +256,7 @@ namespace MapParser.GoldSrc
 				for ( var i = 0; i < extraTexData.Count(); i++ )
 				{
 					var dataextra = extraTexData[i];
-					TextureCache.addTexture( dataextra, wadname: "FromBSP" );
-
-					// We clear manually all materials, remove comment,
-					// If there is a conflict BSP version tex and wad version.
-
-					//var name = MIPTEXData.GetMipTexName( dataextra );
-					//MaterialCache.clearMaterial( matname: name );
+					_ = TextureCache.addTextureWithMIPTEXData( dataextra, wadname: "FromBSP" );
 				}
 			}
 
@@ -235,10 +313,10 @@ namespace MapParser.GoldSrc
 				}
 			}
 
-			// Not working same as typescript version
-			faces.Sort( ( a, b ) => b.texName.CompareTo( a.texName ) );
+			// Not working same as typescript version, do not use, breaking..
+			//faces.Sort( ( a, b ) => b.texName.CompareTo( a.texName ) );
 
-			float[] vertexData = new float[numVertexData * 7];
+			double[] vertexData = new double[numVertexData * 7];
 			int dstOffsVertex = 0;
 
 			int[] indexData = new int[numIndexData];
@@ -248,28 +326,268 @@ namespace MapParser.GoldSrc
 
 			// Build surface meshes
 			byte[] vertexesData = GetLumpData( LumpType.VERTEXES );
-			float[] vertexes;
+			double[] vertexes;
 			using ( MemoryStream stream = new MemoryStream( vertexesData ) )
 			using ( BinaryReader reader = new BinaryReader( stream ) )
 			{
-				vertexes = new float[vertexesData.Length / sizeof( float )];
+				vertexes = new double[vertexesData.Length / sizeof( float )];
 				for ( int i = 0; i < vertexes.Length; i++ )
 					vertexes[i] = reader.ReadSingle();
 			}
 
+
+			List<(int, int, int,Vector3, Vector3, Vector3)> models = new(); // modelIndex, iFirstFace, nFaces, nMins, nMaxs, vOrigin
+
+			var modelsLumpData = GetLumpData( LumpType.MODELS );
+			using ( var streamModel = new MemoryStream( modelsLumpData ) )
+			using ( var readerModel = new BinaryReader( streamModel ) )
+			{
+				for ( var mi = 1; mi < modelsLumpData.Length / 0x40; mi++ ) // 0 is world?
+				{
+					streamModel.Seek( mi * 0x40, SeekOrigin.Begin );
+
+					var nMins = new Vector3( readerModel.ReadSingle(), readerModel.ReadSingle(), readerModel.ReadSingle() );
+					var nMaxs = new Vector3( readerModel.ReadSingle(), readerModel.ReadSingle(), readerModel.ReadSingle() );
+
+					var vOrigin = new Vector3( readerModel.ReadSingle(), readerModel.ReadSingle(), readerModel.ReadSingle() );
+
+					int[] iHeadnodes = new int[4];
+					iHeadnodes[0] = readerModel.ReadInt32();
+					iHeadnodes[1] = readerModel.ReadInt32();
+					iHeadnodes[2] = readerModel.ReadInt32();
+					iHeadnodes[3] = readerModel.ReadInt32();
+
+					var nVisLeafs = readerModel.ReadInt32(); // Giving only -6 ?
+
+					var iFirstFace = readerModel.ReadInt32();
+					var nFaces = readerModel.ReadInt32();
+
+					models.Add( (mi, iFirstFace, nFaces, nMins, nMaxs, vOrigin) );
+				}
+			}
+
+			entities = EntityParser.parseEntities( GetLumpData( LumpType.ENTITIES ) );
+			var entitiesCount = entities.Count;
+
+			PreparingIndicator.Update();
+
+			var VIS = GetLumpData( LumpType.VISIBILITY );
+
+			// In the marksurfaces lump, it have the indexes of the model's mesh, but there is no leaf to connected the models mesh for pvs.
+			// the leaves of nVisOffset's values is -1 which are not included as a vis leaf. So, I implemented the models faces another way for pvs
+
+			var markSurfaceLumpData = GetLumpData( LumpType.MARKSURFACES );
+			ushort[] markSurfaces = new ushort[markSurfaceLumpData.Length / 0x02];
+			using ( var streamMarkSurfaces = new MemoryStream( markSurfaceLumpData ) )
+			using ( var readerMarkSurface = new BinaryReader( streamMarkSurfaces ) )
+				for ( var msi = 0; msi < markSurfaceLumpData.Length / 0x02; msi++ )
+					markSurfaces[msi] = readerMarkSurface.ReadUInt16();
+
+			var leavesLumpData = GetLumpData( LumpType.LEAFS );
+			using ( var streamLeaves = new MemoryStream( leavesLumpData ) )
+			using ( var readerLeaves = new BinaryReader( streamLeaves ) )
+			{
+				for ( var li = 0; li < leavesLumpData.Length / 0x1C; li++ )
+				{
+					streamLeaves.Seek( li * 0x1C, SeekOrigin.Begin );
+
+					var nContents = readerLeaves.ReadInt32();
+					var nVisOffset = readerLeaves.ReadInt32();
+
+					var nMins = new Vector3( readerLeaves.ReadInt16(), readerLeaves.ReadInt16(), readerLeaves.ReadInt16() );
+					var nMaxs = new Vector3( readerLeaves.ReadInt16(), readerLeaves.ReadInt16(), readerLeaves.ReadInt16() );
+					
+					var iFirstMarkSurface = readerLeaves.ReadUInt16();
+					var nMarkSurfaces = readerLeaves.ReadUInt16();
+
+					byte[] nAmbientLevels = new byte[4];
+					nAmbientLevels[0] = readerLeaves.ReadByte();
+					nAmbientLevels[1] = readerLeaves.ReadByte();
+					nAmbientLevels[2] = readerLeaves.ReadByte();
+					nAmbientLevels[3] = readerLeaves.ReadByte();
+
+					if ( nVisOffset != -1 && !(li == 0 && nContents == -2) ) // !(li == 0 && nContents == -2)  Need correction for i==0 => CONTENTS_SOLID 0 - 0 0 0 - 0 0 0 -  0 0 - 0 0 0 0 
+					{
+						int[] marksurfacesForLeaf = new int[nMarkSurfaces];
+
+						for ( var nMark = 0; nMark < nMarkSurfaces; nMark++ )
+							marksurfacesForLeaf[nMark] = markSurfaces[iFirstMarkSurface + nMark];
+
+						leaves.Add( new()
+						{
+							nVisOffset = nVisOffset,
+							BBox = new BBox( nMins + settings.position, nMaxs + settings.position ),
+							faceIndex = marksurfacesForLeaf.ToList(),
+							visLeaves = new()
+						} );
+					}
+				}
+			}
+
+			for ( int i = 0; i < leaves.Count; i++ )
+			{
+				var value = leaves[i];
+				value.visLeaves = new bool[leaves.Count].ToList();
+				leaves[i] = value;
+			}
+
+			for ( int i = 0; i < leaves.Count; i++ )
+			{
+				PreparingIndicator.Update();
+
+				//var str = i + "--> ";
+				//var onceki = 0;
+				var leaf = leaves[i];
+
+				//if ( visibilityArrayIndex == 0 )
+				//	continue;
+
+				List<byte> decodedVIS = new();
+				for ( int jj = leaf.nVisOffset; jj < (leaves.Count() + leaf.nVisOffset); jj++ )
+				{
+					//Log.Info( jj + " " + (leaves.Count + leaf.nVisOffset )+ " "+ VIS.Count()  + " "+ decodedVIS.Count());
+
+					//if ( decodedVIS.Count*8 >= leaves.Count() )
+					//	break;
+
+					if ( jj >= VIS.Count() ) // || jj == -1 ( for -1 leaves )
+					{
+						decodedVIS.Add( 0x00 );
+						continue;
+					}
+					if ( VIS[jj] == 0x00 )
+					{
+						for ( var ibyte = 0; ibyte < VIS[jj + 1]; ibyte++ )
+							decodedVIS.Add( 0x00 );
+						jj++;
+					}
+					else
+						decodedVIS.Add( VIS[jj] );
+				}
+
+				for ( int j = 0; j < leaves.Count; j++ )
+				{
+					//if ( j == 0 )
+					//	continue;
+
+					var index =  (j / 8);//leaf.nVisOffset +
+
+					//if ( index >= VIS.Count() )
+					//	continue;
+
+					byte visibilityByte = decodedVIS[index];
+
+					/*if ( visibilityByte == 0x00 )
+					{
+						str += j + ": " + "false" + ", " + ((onceki != ((j + 1) / 8)) ? " --- " : "");
+						onceki = ((j + 1) / 8);
+						//int runLength = VIS[index + 1];
+						j += (8 * 2)-1;
+						continue;
+					}*/
+
+					int bit = j % 8;
+					int mask = 1 << bit;
+					leaf.visLeaves[j] = ((visibilityByte & mask) != 0);
+
+					//str += j + ": " + ((visibilityByte & mask) != 0) + ", " + ((onceki != ((j + 1) / 8)) ? " --- " : "");
+					//onceki = ((j + 1) / 8);
+				}
+
+				leaves[i] = leaf;
+				//Log.Info( str );
+			}
+
+			/*int offset = 0;
+			for ( int c = 0; c < leaves.Count; )
+			{
+				var leaf = leaves[c];
+				bool[] leaves_visibility = new bool[leaves.Count];
+				if ( VIS[offset] == 0 )
+				{
+					offset++;
+					c += 8 * VIS[offset];
+					offset++;
+				}
+				else
+				{
+					for ( int bit = 1; bit != 0 && c < leaves.Count; bit *= 2, c++ )
+					{
+						if ( (VIS[offset] & (byte)bit) != 0 )
+						{
+							leaves_visibility[c] = true;
+						}
+					}
+					offset++;
+				}
+				leaf.visLeaves = leaves_visibility.ToList();
+			}*/
+
+			// Find wads and skyname from BSP file
+			foreach ( var ent in entities )
+			{
+				if( ent.classname == "worldspawn")
+				{
+					if ( ent.data.TryGetValue( "skyname", out string _skyname ) )
+						skyname = _skyname;
+
+					if ( ent.data.TryGetValue( "wad", out string wadList ) && wadList.Length > 0 )
+					{
+						WADList = new();
+
+						foreach (var line in wadList.Split(";"))
+							if( !string.IsNullOrEmpty( line ) && !string.IsNullOrWhiteSpace( line ) )
+								WADList.Add( $"{Util.PathToMapName( line )}.wad" );
+					}
+
+					break;
+				}
+			}
+
+			if( WADList is not null)
+				WADList = WADList.Distinct().ToList();
+
 			// For sbox
-			List<SimpleVertex> vertexList = new();
+			List<Vertex> vertexList = new();
 			List<Vector2> lightmapList = new();
 			List<int> indexList = new();
 
 			byte[] lighting = GetLumpData( LumpType.LIGHTING );
 			for ( int i = 0; i < faces.Count; i++ )
 			{
+				PreparingIndicator.Update();
+
 				vertexList = new();
 				lightmapList = new();
 
 				Face face = faces[i];
 				int idx = face.index * 0x14;
+
+				EntityParser.EntityData? entity = null;
+				(int, int, int, Vector3, Vector3, Vector3)? model = null;
+
+				// Find faces if is model.
+				foreach ( var _model in models )
+				{
+					if( i >= _model.Item2 && i <= (_model.Item2 + _model.Item3) ) 
+					{
+						model = _model;
+						break;
+					}
+				}
+
+				// If this mesh is model, get its entity data (its keyvalues)
+				if ( model is not null &&  entitiesCount >= model.Value.Item1 )
+				{
+					foreach ( var ent in entities )
+					{
+						if( ent.data.TryGetValue( "model", out var modelname ) && (modelname.Length > 0) && (modelname[0] == '*') && int.Parse( modelname.Replace( "*", "" ) ) == model.Value.Item1 )
+						{
+							entity = ent;
+							break;
+						}
+					}
+				}
 
 				using ( MemoryStream stream = new MemoryStream( facelist ) )
 				using ( BinaryReader reader = new BinaryReader( stream ) )
@@ -286,6 +604,7 @@ namespace MapParser.GoldSrc
 					List<int> styles = new List<int>();
 					for ( int j = 0; j < 4; j++ )
 					{
+						stream.Seek( idx + 0x0C + j, SeekOrigin.Begin );
 						int style = reader.ReadByte();
 						if ( style == 0xFF )
 							break;
@@ -301,7 +620,9 @@ namespace MapParser.GoldSrc
 						lightofs = reader.ReadInt32();
 					}
 
-					Surface mergeSurface = new();
+					//Surface? mergeSurface = null;
+					bool mergeSurface = false;
+					
 					if ( i > 0 )
 					{
 						Face prevFace = faces[i - 1];
@@ -310,27 +631,29 @@ namespace MapParser.GoldSrc
 						if ( face.texName != prevFace.texName )
 							canMerge = false;
 
-						if ( canMerge )
-							mergeSurface = surfaces.LastOrDefault();
+						//if ( canMerge )
+						//	mergeSurface = surfaces.LastOrDefault();
+
+						mergeSurface = canMerge;
 
 						// TODO(jstpierre)
 					}
 
 					TexinfoMapping m = texinfoa[face.texinfo].textureMapping;
-					float minTexCoordS = float.PositiveInfinity, minTexCoordT = float.PositiveInfinity;
-					float maxTexCoordS = float.NegativeInfinity, maxTexCoordT = float.NegativeInfinity;
+					double minTexCoordS = double.PositiveInfinity, minTexCoordT = double.PositiveInfinity;
+					double maxTexCoordS = double.NegativeInfinity, maxTexCoordT = double.NegativeInfinity;
 
 					int dstOffsVertexBase = dstOffsVertex;
 
 					for ( int j = 0; j < numedges; j++ )
 					{
 						int vertIndex = vertindices[firstedge + j];
-						float px = vertexes[vertIndex * 3 + 0];
-						float py = vertexes[vertIndex * 3 + 1];
-						float pz = vertexes[vertIndex * 3 + 2];
+						double px = vertexes[vertIndex * 3 + 0];
+						double py = vertexes[vertIndex * 3 + 1];
+						double pz = vertexes[vertIndex * 3 + 2];
 
-						float texCoordS = px * m.s.x + py * m.s.y + pz * m.s.z + m.s.w;
-						float texCoordT = px * m.t.x + py * m.t.y + pz * m.t.z + m.t.w;
+						double texCoordS = Math.Round( px * m.s.x + py * m.s.y + pz * m.s.z + m.s.w);
+						double texCoordT = Math.Round( px * m.t.x + py * m.t.y + pz * m.t.z + m.t.w);
 
 						vertexData[dstOffsVertex++] = px;
 						vertexData[dstOffsVertex++] = py;
@@ -349,9 +672,11 @@ namespace MapParser.GoldSrc
 						maxTexCoordT = Math.Max( maxTexCoordT, texCoordT );
 					}
 
-					int surfaceW = (int)Math.Ceiling( maxTexCoordS / 16 ) - (int)Math.Floor( minTexCoordS / 16 ) + 1;
-					int surfaceH = (int)Math.Ceiling( maxTexCoordT / 16 ) - (int)Math.Floor( minTexCoordT / 16 ) + 1;
+					var lightmapScale = 1f / 16f;
+					int surfaceW = (int)Math.Ceiling( maxTexCoordS * lightmapScale ) - (int)Math.Floor( minTexCoordS * lightmapScale ) + 1;
+					int surfaceH = (int)Math.Ceiling( maxTexCoordT * lightmapScale ) - (int)Math.Floor( minTexCoordT * lightmapScale ) + 1;
 					int lightmapSamplesSize = surfaceW * surfaceH * styles.Count * 3;
+
 					byte[] samples = (lightofs != int.MaxValue) ? lighting.Skip( lightofs ).Take( lightmapSamplesSize ).ToArray() : null; //.Select( b => (int)b ).ToList()  List<int>
 
 					SurfaceLightmapData lightmapData = new SurfaceLightmapData
@@ -374,54 +699,57 @@ namespace MapParser.GoldSrc
 					{
 						int offs = dstOffsVertexBase + (ii * 7) + 3;
 
-						float texCoordS = vertexData[offs++];
-						float texCoordT = vertexData[offs++];
+						double texCoordS = vertexData[offs++];
+						double texCoordT = vertexData[offs++];
 
-						float lightmapCoordS = lightmapData.pagePosX + (texCoordS - MathF.Floor( minTexCoordS )) / 16;
-						float lightmapCoordT = lightmapData.pagePosY + (texCoordT - MathF.Floor( minTexCoordT )) / 16;
-						vertexData[offs++] = lightmapCoordS;
-						vertexData[offs++] = lightmapCoordT;
+						double lightmapCoordS = (texCoordS * lightmapScale) - Math.Floor( minTexCoordS * lightmapScale ) + 0.5;
+						double lightmapCoordT = (texCoordT * lightmapScale) - Math.Floor( minTexCoordT * lightmapScale ) + 0.5;
+						vertexData[offs++] = lightmapData.pagePosX + lightmapCoordS;
+						vertexData[offs++] = lightmapData.pagePosY + lightmapCoordT;
 
-						lightmapList.Add( new Vector2( lightmapCoordS, lightmapCoordT ) );
+						lightmapList.Add( new Vector2( (float)lightmapCoordS, (float)lightmapCoordT ) );
 					}
 					indexList = new();
 					int indexCount = Util.TopologyHelper.GetTriangleIndexCountForTopologyIndexCount( Util.GfxTopology.TriFans, numedges );
 					Util.TopologyHelper.ConvertToTrianglesRange( ref indexData, dstOffsIndex, Util.GfxTopology.TriFans, dstIndexBase, numedges );
 
-					Surface surface = mergeSurface;
+					Surface surface;
 
-					//if ( surface == null )
-					//{
-					surface = new Surface { texName = face.texName, startIndex = dstOffsIndex, indexCount = 0, lightmapData = new List<SurfaceLightmapData>() };
-					surfaces.Add( surface );
-					//}
+					if ( !mergeSurface )
+					{
+						surface = new Surface { texName = face.texName, startIndex = dstOffsIndex, indexCount = indexCount, lightmapData = new List<SurfaceLightmapData>() { lightmapData } };
+						surfaces.Add( surface );
+					}
+					else
+					{
+						Surface surfacedata = surfaces[surfaces.Count - 1];
+						surfacedata.lightmapData.Add( lightmapData );
+						surfacedata.indexCount += indexCount;
+						surfaces[surfaces.Count - 1] = surfacedata;
+					}
 
 					/////////////////////////////////////////////////////////////////////////////////////////////////
 					//**************************************** For s&box ********************************************
 					/////////////////////////////////////////////////////////////////////////////////////////////////
-
-					// Can be removed, because we do not have any goldsrc skybox shader for now..
-					if ( face.texName == "sky" )
-						continue;
-
+	
 					var dstOffsVertex_temp = dstOffsVertexBase;
 					for ( int j = 0; j < numedges; j++ )
 					{
 						//For s&box
-						var found = MapParser.Render.TextureCache.textureData.TryGetValue( face.texName, out var infoFromTextureData );
+						var found = Render.TextureCache.textureData.TryGetValue( face.texName, out var infoFromTextureData );
 
-						var vec = new Vector3( vertexData[dstOffsVertex_temp++], vertexData[dstOffsVertex_temp++], vertexData[dstOffsVertex_temp++] );
+						var vec = new Vector3( (float)vertexData[dstOffsVertex_temp++], (float)vertexData[dstOffsVertex_temp++], (float)vertexData[dstOffsVertex_temp++] );
 						var texcoordS = vertexData[dstOffsVertex_temp++];
 						var texcoordT = vertexData[dstOffsVertex_temp++];
-						dstOffsVertex_temp++; //LightmapTexCoordS
-						dstOffsVertex_temp++; //LightmapTexCoordT
+						var lightmapCoordS = vertexData[dstOffsVertex_temp++];
+						var lightmapCoordT = vertexData[dstOffsVertex_temp++];
 
 						//Vector3.One, Vector3.Left
-						vertexList.Add( new SimpleVertex( vec, Vector3.One, Vector3.Right, new Vector2( texcoordS / (found ? infoFromTextureData.width : 1), texcoordT / (found ? infoFromTextureData.height : 1) ) ) );
+						vertexList.Add( new Vertex( vec, Vector3.Zero, Vector3.Left, new Vector4( (float)texcoordS, (float)texcoordT, (float)lightmapCoordS, (float)lightmapCoordT ) ) );
 					}
 
-					//For sbox to read indexData for TriFans
 
+					//For sbox to read indexData for TriFans
 					var dstoffset_temp = dstOffsIndex;
 					var dst_temp = 0;
 					for ( var il = 0; il < numedges - 2; il++ )
@@ -458,44 +786,56 @@ namespace MapParser.GoldSrc
 
 					indexList.Reverse(); // Fix mesh backside problem
 
-					//int id = Game.Random.Int( 100000 );
-					if ( Game.IsClient )
-						Render.MaterialCache.CreateMaterial( face.texName ); //, ref lightmapData, id
+					// Checking trigger or solid entities in order to find out to remove its physics, that is not good way, might me removed in the future
+					// I need to seperate the model faces from map faces and create this models as an entities, by iFirstFace and nFaces, it is possible. I implemented already below.
+					var pass = true;
 
-					meshDataList.Add( new meshData() { vertices = vertexList, indices = indexList, textureName = face.texName } ); //, id=id
+					if ( entity is not null && blacklistEnts.TryGetValue( entity.Value.classname.Contains("trigger_") ? "trigger_": entity?.classname, out var blacklisted ) && ((blacklisted.Item1 && Game.IsClient) || (blacklisted.Item2 && Game.IsServer)) )
+						pass = false;
+
+					if ( Game.IsClient && face.texName == "sky" )
+						pass = false;
+
+					if ( pass )
+					{
+						//textureList.Add( face.texName );
+
+						if ( entity is null )
+							meshDataList.Add( new meshData() { vertices = vertexList, indices = indexList, faceIndex = i, textureName = face.texName } );
+						else
+							entityMeshDataList.Add( new entityMeshData() { vertices = vertexList, indices = indexList, faceIndex = i, textureName = face.texName, entity = entity, nMins = model is not null ? model.Value.Item4 : Vector3.Zero , nMaxs = model is not null ? model.Value.Item5 : Vector3.Zero, vOrigin = model is not null ? model.Value.Item6 : Vector3.Zero } );
+					}
 
 					//////////////////////////////////////////////////////////////////////////////////////////////////////
 					//////////////////////////////////////////////////////////////////////////////////////////////////////
-
-					surface.lightmapData.Add( lightmapData );
-					surface.indexCount += indexCount;
+					
 					dstOffsIndex += indexCount;
 					dstIndexBase += numedges;
 				}
 			}
 
-			entities = EntityParser.parseEntities( GetLumpData( LumpType.ENTITIES ) );
-
+			//Log.Info( Encoding.ASCII.GetString( GetLumpData( LumpType.ENTITIES ) ));
+			
 			// Not required
-			//this.vertexData = vertexData;
-			//this.indexData = indexData;
+			this.vertexData = vertexData;
+			this.indexData = indexData;
 
-			// For async loading, but disabled
-			/*if ( Game.IsClient )
+			//textureList = textureList.Distinct().ToList();
+
+			List<SurfaceLightmapData> list = new();
+			for ( var i = 0; i < surfaces.Count(); i++ )
 			{
-				// Extra texture data from BSP
-				for ( var i = 0; i < extraTexData.Count(); i++ )
-				{
-					var dataextra = extraTexData[i];
-					TextureCache.addTexture( dataextra, wadname: "FromBSP" );
+				var surface = surfaces[i];
 
-					// We clear manually all materials, remove comment,
-					// If there is a conflict BSP version tex and wad version.
+				for ( var j = 0; j < surface.lightmapData.Count; j++ )
+					list.Add(surface.lightmapData[j] );
+			}
+			var package = lightmapPackerPage;
+			
+			//Log.Info( "LightMap" );
 
-					//var name = MIPTEXData.GetMipTexName( dataextra );
-					//MaterialCache.clearMaterial( matname: name );
-				}
-			}*/
+			PreparingIndicator.Update();
+			lightmap = MIPTEXData.createLightmap( ref package, ref list );
 		}
 
 		public byte[] GetLumpData( LumpType lumpType )

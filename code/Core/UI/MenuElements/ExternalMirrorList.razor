@@ -1,10 +1,14 @@
 @using System;
+@using System.Globalization;
+@using System.Text;
 @using Sandbox;
+@using Sandbox.Internal;
 @using Sandbox.UI;
 @using Sandbox.Diagnostics;
 @using System.Collections.Generic;
 @using System.Linq;
 @using System.Threading.Tasks;
+@using System.Text.RegularExpressions;
 
 
 @namespace MapParser
@@ -83,7 +87,7 @@
 	{
 		@foreach (var mirror in Manager.MapMirrors)
 		{
-			<div class="rowItem @(selectedMirror == mirror.Item1)" @onclick=@(() => selectRow(mirror.Item1))>@(mirror.Item1)</div>
+			<div class="rowItem @(selectedMirror == mirror.Item1)" @onclick=@(async () => await selectRow(mirror.Item1))>@(mirror.Item1)</div>
 		}
 	}
 	@if (Manager.MapMirrors.Count() == 0)
@@ -105,7 +109,7 @@
 	{
 		return HashCode.Combine(Manager.MapMirrors, selectedMirror, mapList);
 	}
-	void selectRow(string mirror)
+	async Task selectRow(string mirror)
 	{
 		selectedMirror = mirror;
 
@@ -113,8 +117,61 @@
 
 		var mirrorData = Manager.MapMirrors.Where(x => x.Item1 == mirror).FirstOrDefault();
 
+		if (mirrorData.Item3.Count == 0)
+			mirrorData = await initializeMirrorList(mirror);
+
 		foreach (string line in mirrorData.Item3)
 			if (!line.Contains("sex") || line.Contains("porn"))
 				mapList.maps.Add(line);
+	}
+
+	async Task<(string, string, List<string>)> initializeMirrorList(string selectedMirror)
+	{
+		mapList.maps.Add("Loading..");
+
+		var mirrorData = Manager.MapMirrors.Where(x => x.Item1 == selectedMirror).FirstOrDefault();
+
+		var cultureInfo = CultureInfo.CurrentCulture;
+		DateTime dt = DateTime.Now;
+
+		DayOfWeek firstDay = cultureInfo.DateTimeFormat.FirstDayOfWeek;
+		CalendarWeekRule weekRule = cultureInfo.DateTimeFormat.CalendarWeekRule;
+		Calendar cal = cultureInfo.Calendar;
+		int week = cal.GetWeekOfYear(dt, weekRule, firstDay);
+
+		// Forcing weekly wipe
+		var sanitizedMirror = Util.ReplaceInvalidChars(selectedMirror);
+		var path = $"{Manager.downloadPath}/{sanitizedMirror}_{week}_{DateTime.Now.Year}.txt";
+		List<string> finalData = new List<string>();
+		if (FileSystem.Data.FileExists(path))
+			finalData = Util.Decompress<string>(Convert.FromBase64String(FileSystem.Data.ReadAllText(path))).Split(';').ToList();
+		else
+		{
+			foreach (var file in FileSystem.Data.FindFile($"{Manager.downloadPath}/", "*.txt"))
+				if (file.Contains(sanitizedMirror))
+					FileSystem.Data.DeleteFile(file);
+
+			var http = new Http(new Uri($"{selectedMirror}maps/"));
+			var data = await http.GetBytesAsync();
+			var ascii = Encoding.ASCII.GetString(data);
+
+			string pattern = @"href=['""]([^'""]+?)['""]";
+
+			var matches = Regex.Matches(ascii, pattern);
+
+			foreach (Match match in matches)
+				if (match.Groups[1].Value.Contains(".bsp"))
+					finalData.Add(match.Groups[1].Value.Replace("href=\"","").Replace(".bsp\"",""));
+
+			FileSystem.Data.WriteAllText($"{path}", string.Join(";", Convert.ToBase64String(Util.Compress(string.Join(";", finalData)))));
+
+			http.Dispose();
+		}
+
+		mirrorData.Item3 = finalData;
+		mapList.maps.Clear();
+
+		return mirrorData;
+
 	}
 }

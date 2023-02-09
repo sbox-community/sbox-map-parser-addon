@@ -108,6 +108,10 @@ namespace MapParser
 		{
 			return string.Concat( filename.Split( Path.GetInvalidPathChars() ) );
 		}
+		public static string ReplaceInvalidChars( string filename )
+		{
+			return string.Join( "_", filename.Split( Path.GetInvalidFileNameChars() ) );
+		}
 		public static byte[] Compress<T>( T data )
 		{
 			using var stream = new MemoryStream();
@@ -218,7 +222,55 @@ namespace MapParser
 				}
 
 			}
+		}
+				/*public static byte[] wadWriter( List<string> wadLists )
+		{
+			//byte wadData = new byte[wadLists.Count];
+			var count = wadLists.Count;
+			if ( count == 0 )d
+				return new byte[0];
+
+			using ( var stream = new MemoryStream() )
+			{
+				using ( var writer = new BinaryWriter( stream ) )
+				{
+					
+					writer.Write( count );
+					for ( var i = 0; i < count; i++ )
+						writer.Write( wadLists[i] );
+					return stream.ToArray();
+				}
+			}
+		}
+		[ClientRpc]
+		public static void sendTexture( byte[] textureData, int Width, int Height, bool compress = false )
+		{
+			var textureName = Texture.Create( Width, Height );
+			textureName.WithData( compress ? Util.Decompress <byte[]>( textureData ) : textureData );
+
+			var textureFinish = textureName.Finish();
+
+			Panel test = Game.RootPanel.FindRootPanel().Add.Panel();
+			test.Style.Width = Length.Fraction( 1.0f );
+			test.Style.Height = Length.Fraction( 1.0f );
+			test.Style.BackgroundImage = textureFinish;
+			test.Style.Position = PositionMode.Absolute;
+			test.Style.BackgroundRepeat = BackgroundRepeat.NoRepeat;
+
+			test.Style.BackgroundSizeX = Length.Fraction( 0.9f );
+			test.Style.BackgroundSizeY = Length.Fraction( 0.9f );
+
+			_ = Timer( 5000, () =>
+			{
+				test.Delete();
+			} );
+		}
+		async public static Task Timer( int s, Action callback )
+		{
+			await System.Threading.Tasks.Task.Delay( s );
+			callback?.Invoke();
 		}*/
+
 		public static class TopologyHelper
 		{
 			public static void ConvertToTrianglesRange( ref int[] dstBuffer, int dstOffs, GfxTopology topology, int baseVertex, int numVertices )

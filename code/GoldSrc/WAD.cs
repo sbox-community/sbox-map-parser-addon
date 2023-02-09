@@ -47,7 +47,7 @@ namespace MapParser.GoldSrc
 				{
 					if ( buffer.Length <= infotableidx )
 					{
-						Notify.Create( "Requested view does not fit inside mapping", Notify.NotifyType.Error );
+						Notify.Create( "Requested view does not fit insideMap mapping", Notify.NotifyType.Error );
 						return new();
 					}
 					var filepos = BitConverter.ToInt32( buffer, infotableidx );

@@ -87,7 +87,7 @@
 	{
 		@foreach (var infoPackage in maps)
 		{
-			<div class="rowItem @(selectedPackage.Equals(infoPackage))" tooltip=@($"{infoPackage.name}\n\r{infoPackage.desp}\n\rEngine:{infoPackage.engine}\nGame:{infoPackage.game}\nPath:{infoPackage.bsp}\nOffset:{infoPackage.offset}\nAngles:{infoPackage.angles}\nWad List:{string.Join(", ",infoPackage.goldsrc_wads.SelectMany( x => x.Values ).ToList())}") @onclick=@(() => selectRow(infoPackage))>@(Util.PathToMapName(infoPackage.bsp))</div>
+			<div class="rowItem @(selectedPackage.Equals(infoPackage))" tooltip=@($"{infoPackage.name}\n\r{infoPackage.desp}\n\rEngine:{infoPackage.engine}\nGame:{infoPackage.game}\nPath:{infoPackage.bsp}\nOffset:{infoPackage.offset}\nAngles:{infoPackage.angles}") @onclick=@(() => selectRow(infoPackage))>@(Util.PathToMapName(infoPackage.bsp))</div>
 		}
 	}
 	@if (maps.Count() == 0)

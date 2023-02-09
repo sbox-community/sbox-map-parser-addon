@@ -3,98 +3,91 @@
 //=========================================================================================================================
 HEADER
 {
-	//DevShader = true;
-	CompileTargets = (IS_SM_50 && (PC || VULKAN));
 	Description = "GoldSrc Render Shader";
 	Version = 1;
 }
 
-
-FEATURES
+MODES
 {
-	#include "common/features.hlsl"
-	//Feature(F_MORPH_SUPPORTED, 0..1, "TEST");
+	VrForward();
 }
 
 //=========================================================================================================================
 COMMON
 {
-
-	#include "common/shared.hlsl"
-	//#include "system.fxc"
-	//#include "common.fxc" 
+	#include "system.fxc"
+	#include "vr_common.fxc"
+	//#define S_TRANSLUCENT 1
+	//#define BLEND_MODE_ALREADY_SET
+	//#define COLOR_WRITE_ALREADY_SET
 
 	struct VS_INPUT
 	{
-		#include "common/vertexinput.hlsl"
-		//#include "vr_common_vs_input.fxc"
-	
-		//float3 vPositionOs : POSITION < Semantic(PosXyz); > ;
-		//float2 vTexCoord : TEXCOORD0 < Semantic(LowPrecisionUv); > ;
-
+		float4 vPositionOs : POSITION < Semantic(PosXyz); > ;
+		float4 vTextureCoords : TEXCOORD0 < Semantic(LowPrecisionUv); > ;
 	};
 
 	struct PS_INPUT
 	{
-		#include "common/pixelinput.hlsl"
-		//#include "vr_common_ps_input.fxc"
-		//float4 vPositionSs		: SV_ScreenPosition;
-			
-		//float2 vTextureCoords : TEXCOORD0;
-		//float4 vPositionPs		: SV_POSITION;
+		float4 vTextureCoords : TEXCOORD0;
+		float3 vPositionWs : TEXCOORD2;
+
+	#if ( PROGRAM == VFX_PROGRAM_VS )
+		float4 vPositionPs	: SV_Position;
+	#endif
 	};
 }
 VS
 {
-	#include "common/vertex.hlsl"
-	//#include "vr_common_vs_code.fxc"
-
-	PS_INPUT MainVs(INSTANCED_SHADER_PARAMS(VS_INPUT input))
+	PS_INPUT MainVs( const VS_INPUT i )
 	{
+		PS_INPUT o;
 
+		o.vPositionWs = i.vPositionOs.xyz;
+		o.vPositionPs = Position3WsToPs(i.vPositionOs.xyz);
 
-		PS_INPUT o = ProcessVertex(input);
-		//CalculateCameraToPositionDirWs
-		//o.vPositionPs = mul(g_matProjectionToWorld, float4(0,0,0, 1.0)); //float4(i.vPositionOs.xyz, 1.0f);
-		//o.vPositionSs = float4(input.vPositionOs.xyz, 1.0f);
-		//o.vTextureCoords = input.vTexCoord;
-		return FinalizeVertex(o);
+		o.vTextureCoords = i.vTextureCoords;
 
+		return o;
 	}
-
 }
 
 //=========================================================================================================================
 
 PS
 {
-	#include "common/pixel.hlsl"
+	RenderState(BlendEnable, true);
+	RenderState(SrcBlend, SRC_ALPHA);
+	RenderState(DstBlend, INV_SRC_ALPHA);
+	RenderState(AlphaToCoverageEnable, true);
+	RenderState(ColorWriteEnable0, RGBA);
 
-	//CreateInputTexture2D(TextureDiffuse, Srgb, 8, "", "_color", "Color,1/1", Default3(1.0, 1.0, 1.0));
-	CreateTexture2D(u_TextureDiffuse) < Attribute("TextureDiffuse"); SrgbRead(true); Filter(MIN_MAG_LINEAR_MIP_POINT); AddressU(MIRROR); AddressV(MIRROR); > ; //OutputFormat(DXT5);
-	//TextureAttribute(u_TextureDiffuse, u_TextureDiffuse);
+	SamplerState TextureFiltering < Filter( POINT ); >;
 
-	//CreateInputTexture2D(TextureLightmap, Srgb, 8, "", "_color", "Color,1/2", Default3(1.0, 1.0, 1.0));
-	CreateTexture2D(u_TextureLightmap) <  Attribute("TextureLightmap"); SrgbRead(true); Filter(MIN_MAG_LINEAR_MIP_POINT); AddressU(MIRROR); AddressV(MIRROR); > ;
-	//TextureAttribute(u_TextureLightmap, u_TextureLightmap);
+	CreateTexture2D(u_TextureDiffuse) < Attribute("TextureDiffuse"); SrgbRead(true); Filter(MIN_MAG_LINEAR_MIP_POINT);>;
+
+	CreateTexture2D(u_TextureLightmap) <  Attribute("TextureLightmap"); SrgbRead(true); Filter(MIN_MAG_MIP_LINEAR); AddressU(CLAMP); AddressV(CLAMP); >;
+
+	bool hlStylePixel < Attribute("Pixelation"); Default(0); >;
+
+	float Opacity < Attribute("Opacity"); Default(1.0); > ;
 
 	float4 MainPs(PS_INPUT i) : SV_Target0
 	{
-		Material m = GatherMaterial(i);
-
+		float4 t_DiffuseSample;
 		float2 t_TexCoordDiffuse = i.vTextureCoords.xy / TextureDimensions2D(u_TextureDiffuse,0).xy;
-		float4 t_DiffuseSample = Tex2D(u_TextureDiffuse, t_TexCoordDiffuse.xy);
+
+		if ( hlStylePixel )
+			t_DiffuseSample = Tex2DS(u_TextureDiffuse, TextureFiltering, t_TexCoordDiffuse.xy);
+		else
+			t_DiffuseSample = Tex2D(u_TextureDiffuse, t_TexCoordDiffuse.xy);
 
 		if (t_DiffuseSample.a < 0.1)
 			return float4(0, 0, 0, 0);
 
-		float2 t_TexCoordLightmap = i.vTextureCoords.xy / TextureDimensions2D(u_TextureLightmap, 0).xy;
+		float2 t_TexCoordLightmap = i.vTextureCoords.zw / TextureDimensions2D(u_TextureLightmap, 0).xy;
 		float4 t_LightmapSample = Tex2D(u_TextureLightmap, t_TexCoordLightmap.xy);
 
-		float4 o = FinalizePixelMaterial(i, m);
-		o.rgba = t_DiffuseSample * t_LightmapSample;
-		return o;
+		return float4(t_DiffuseSample.rgb * t_LightmapSample.rgb, t_DiffuseSample.a * Opacity);
 	}
 }
-
-

@@ -1,0 +1,97 @@
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using Sandbox.Diagnostics;
+@using System.Collections.Generic;
+@using System.Linq;
+@using System.Threading.Tasks;
+
+@namespace MapParser
+@inherits Panel
+
+<style>
+	PreparingIndicator {
+		height: 3%;
+		min-height: 3%;
+		width: 100%;
+		flex-shrink: 0;
+		transition: all 0.3s ease-in-out, opacity 0.2s linear;
+		font-color:white;
+		font-family:Calibri;
+		top: 10%;
+		opacity:1;
+		position: absolute;
+		justify-content:center;
+		
+		.info{
+			background-color: rgba(0.1,0.1,0.1,0.8);
+			border-radius: 10px;
+			padding: 8px;
+
+			.icon{
+				top: 1px;
+				right: 3px;
+				animation-name: spin;
+				animation-duration: 0.5s;
+			}
+		}
+	}
+	@@keyframes spin {
+		from {
+			transform: rotate(360deg);
+		}
+		to {
+			transform: rotate(0deg);
+		}
+	}
+</style>
+
+<div class="info"><i class="icon">replay</i>Progressing</div> <!--(".".PadRight((int)Time.Tick/2 % 3,'.'))-->
+
+@code
+{
+	private static PreparingIndicator instance;
+
+	float timeLeft = Time.Now + 1f;
+	static float svCooldown = 0f;
+
+	public override void Tick()
+	{
+		if (timeLeft < Time.Now)
+		{
+			Delete();
+			return;
+		}
+
+		var diff = MathF.Min(timeLeft - Time.Now, 1);
+		Style.Opacity = diff;
+
+		base.Tick();
+	}
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(Time.Tick);
+	}
+
+	public static void Update(float timeleft = 1f)
+	{
+		if ( Game.IsServer ) // TODO: find out where they coming from for only clientside operations
+		{
+			if (Time.Now < svCooldown)
+				return;
+
+			svCooldown = Time.Now + 0.5f;
+
+			Manager.ServerInfo(To.Everyone); // Everyone or only the owner?
+			return;
+		}
+
+		if ((instance == null || !instance.IsValid()) && Game.RootPanel.IsValid())
+		{
+			instance?.Delete();
+			instance = Game.RootPanel.AddChild<PreparingIndicator>();
+		}
+
+		instance.timeLeft = Time.Now + timeleft;
+	}
+}
