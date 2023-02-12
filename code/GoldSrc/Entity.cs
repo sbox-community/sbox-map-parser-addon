@@ -129,6 +129,7 @@ namespace MapParser.GoldSrc
 			private static Material skyMat = Material.FromShader( "shaders/goldsrc_sky.shader" );
 			private Texture lightmap;
 			private List<(VertexBuffer, Texture, int)> vertexBuffer = new(); // int: faceindex
+			private List<Vector3> vertexBufferNormals = new(); // for backface culling
 			private List<BSPFile.Leaf> leaves;
 			bool[] PVS;
 			int PVSCount;
@@ -204,8 +205,12 @@ namespace MapParser.GoldSrc
 					VertexBuffer buffer = new();
 					buffer.Init( true );
 
+					Vector3 Normal = Vector3.Zero;
 					foreach ( var vertex in mesh.Item1 )
+					{
 						buffer.Add( new( vertex.Position + settings.position, vertex.Normal, vertex.Tangent, vertex.TexCoord0 ) );
+						Normal = vertex.Normal;
+					}
 
 					foreach ( var indices in mesh.Item2 )
 						buffer.AddRawIndex( indices );
@@ -215,7 +220,8 @@ namespace MapParser.GoldSrc
 						texturesNeedLoaded.Add( vertexBufferIndex, mesh.Item3 );
 
 					vertexBuffer.Add( (buffer, findTexture ? texCacheData.texture : Texture.Invalid, mesh.Item4) );
-
+					
+					vertexBufferNormals.Add( Normal );
 					vertexBufferIndex++;
 				}
 
@@ -429,6 +435,7 @@ namespace MapParser.GoldSrc
 										if ( PVSCount <= ind ) //Log.Info( "?" );
 											continue; // because of model's face index?
 
+										// Vector3.Dot( vertexBufferNormals[ix], Camera.Rotation.Forward.Normal ) < 0f;
 										PVS[ind] = true;//IsInside( leaf2.nMaxs - ((leaf2.nMaxs- leaf2.nMins)/2f) );
 									}
 								}

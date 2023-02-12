@@ -243,7 +243,7 @@
 		<Button tooltip="External Maps From FastDL Mirrors" class="tab_button @(tab_3 != null && tab_3.IsValid() && tab_3.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_3))><i>install_desktop</i> External Maps </Button>
 		<Button tooltip="Currently Spawned Exists Maps" class="tab_button @(tab_2 != null && tab_2.IsValid() && tab_2.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_2))><i>storage</i> Active Maps </Button>
 		<Button tooltip="Utilities For Debugging" class="tab_button @(tab_4 != null && tab_4.IsValid() && tab_4.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_4))><i>straighten</i> Utilities </Button>
-		<Button tooltip="Spawning Settings" class="tab_button @(tab_5 != null && tab_5.IsValid() && tab_5.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_5))><i>settings</i> Settings </Button>
+		<Button tooltip="General Settings" class="tab_button @(tab_5 != null && tab_5.IsValid() && tab_5.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_5))><i>settings</i> Settings </Button>
 		<Button tooltip="Don't Hesitate :)" class="tab_button @(tab_6 != null && tab_6.IsValid() && tab_6.Style.Display == DisplayMode.Flex)" @onclick=@(() => openTab(tab_6))><i>question_mark</i> About </Button>
 	</div>
 	<div class="panel">
@@ -304,15 +304,15 @@
 		<div style="display:none;flex-direction:column;" class="tab_2" @ref="tab_2">
 			<ActiveMapList style="top:10px;left:10px;" @ref="activemaplist"></ActiveMapList>
 			<div style="margin:20px;flex-direction:column;justify-content:center;width:98%;align-content:center;align-items:center">
-				@if (activemaplist.IsValid() && !string.IsNullOrEmpty(activemaplist.selectedMap.spawnParameter.mapName))
+				@if (activemaplist.IsValid() && activemaplist.selectedMap is not null && !string.IsNullOrEmpty(activemaplist.selectedMap.Value.spawnParameter.mapName))
 				{
-					<span>Map Name: @activemaplist.selectedMap.spawnParameter.mapName</span>
-					<span>Full ident: @activemaplist.selectedMap.spawnParameter.packageFullIdent</span>
-					<span>Path: @activemaplist.selectedMap.spawnParameter.mapPath</span>
-					<span>Position: @activemaplist.selectedMap.spawnParameter.position</span>
-					<span>Wad List: @(string.Join(", ", (activemaplist.selectedMap.spawnParameter.wadList != null && activemaplist.selectedMap.spawnParameter.wadList.Count() != 0 ? PathToWadName(activemaplist.selectedMap.spawnParameter.wadList) :new List<string>() {"none"} )))</span>
-					<span style="top:30px"><Button tooltip="Goto Map Position" @onclick=@(() => gotoPosition(activemaplist.selectedMap.spawnParameter.mapName))><i>turn_slight_left</i> Goto Map </Button> </span>
-					<span style="top:30px"><Button tooltip="Remove Map" @onclick=@(() => Manager.adminConCommandHandler(1,mapName:activemaplist.selectedMap.spawnParameter.mapName))><i>remove_circle_outline</i> Remove Map </Button> </span>
+					<span>Map Name: @activemaplist.selectedMap.Value.spawnParameter.mapName</span>
+					<span>Full ident: @activemaplist.selectedMap.Value.spawnParameter.packageFullIdent</span>
+					<span>Path: @activemaplist.selectedMap.Value.spawnParameter.mapPath</span>
+					<span>Position: @activemaplist.selectedMap.Value.spawnParameter.position</span>
+					<span>Wad List: @(string.Join(", ", (activemaplist.selectedMap.Value.spawnParameter.wadList != null && activemaplist.selectedMap.Value.spawnParameter.wadList.Count() != 0 ? PathToWadName(activemaplist.selectedMap.Value.spawnParameter.wadList) : new List<string>() { "none" })))</span>
+					<span style="top:30px"><Button tooltip="Goto Map Position" @onclick=@(() => gotoPosition(activemaplist.selectedMap.Value.spawnParameter.mapName))><i>turn_slight_left</i> Goto Map </Button> </span>
+					<span style="top:30px"><Button tooltip="Remove Map" @onclick=@(() => {Manager.adminConCommandHandler(1,mapName:activemaplist.selectedMap.Value.spawnParameter.mapName);activemaplist.selectedMap = null;})><i>remove_circle_outline</i> Remove Map </Button> </span>
 				}
 			</div>
 		</div>
@@ -337,10 +337,12 @@
 					<TextureList @ref="texturelist"></TextureList>
 					<div @ref="canvas" style="top:10px;width:256px;height:256px;box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);"></div>
 				</div>
-				<div style="height:5%;margin:10px;">Selected Texture's WAD: @selectedWAD</div>
-				<div style="height:5%;margin:10px;top:0%">Cached Texture: @Render.TextureCache.textureData.Count()   Cached WAD: @GoldSrc.TextureCache.WADCache.Count()</div>
+				<div style="height:1%;margin:10px;">Selected Texture's WAD: @selectedWAD</div>
+				<div style="height:1%;margin:10px;top:-1%">Cached Texture: @Render.TextureCache.textureData.Count()   Cached WAD: @GoldSrc.TextureCache.WADCache.Count()</div>
 				<Button style="left:10px;width:30%;" tooltip="Clear the texture cache.." @onclick=@(() => Render.TextureCache.clearTexture())><i>remove_circle</i> Clear Texture Cache ( Local ) </Button>
 				<Button style="left:10px;width:30%;" tooltip="Clear the WAD cache.." @onclick=@(() => GoldSrc.TextureCache.clearWAD())><i>remove_circle</i> Clear WAD Cache ( Local ) </Button>
+				<Button style="left:10px;width:30%;" tooltip="Clear Mirrors cache.." @onclick=@(() => clearMirrorsFileCache())><i>remove_circle</i> Clear Mirror's File Cache ( Local ) </Button>
+				<Button style="left:10px;width:30%;" tooltip="Clear all download files from the mirrors.." @onclick=@(() => clearAllDownloadFiles())><i>remove_circle</i> Clear All Download Files ( Local ) </Button>
 			</div>
 		</div>
 		<div style="display:none;align-items:center;align-content:center;flex-direction:column;justify-content:center;width:100%" class="tab_5" @ref="tab_5">
@@ -362,10 +364,13 @@
 			</div>
 		</div>
 		<div style="display:none;" class="tab_6" @ref="tab_6">
+
+			
 			<div style="justify-content:center;align-content:center;align-items:center;align-self:center;width:100%;height:100%;flex-direction:column;font-family:Tahoma;">
-				<div style="font-color:white;font-size:40px;text-shadow:0 0 3px rgba(1,1,1,1);">s&box Community</div>
-				<div style="font-size:20px;">Visit to sbox.community</div>
-				<div style="height:10%;"></div>
+				<div style="font-color:white;font-size:40px;text-shadow:0 0 3px rgba(1,1,1,1);margin-bottom:15px;">s&box Community</div>
+				<WebPanel style="width:90%;height:60%;" @ref="webpanel"></WebPanel>
+				<!--<div style="font-size:20px;">Visit to sbox.community</div>-->
+				<div style="height:5%;"></div>
 				<div style="font-size:16px;">GitHub</div>
 				<div style="font-size:14px;">https://github.com/sbox-community/sbox-map-parser-addon</div>
 			</div>
@@ -394,6 +399,7 @@
 	public Panel tab_5 { get; set; }
 	public Panel tab_6 { get; set; }
 	public string selectedWAD = "None";
+	public WebPanel webpanel { get; set; }
 
 	List<Manager.ContentPackage.PackageInfo>? updateMaplist = null;
 	float turn = 0;
@@ -517,6 +523,7 @@
 		else if (tab == tab_6)
 		{
 			tab_6.Style.Display = DisplayMode.Flex;
+			webpanel.Surface.Url = "https://sbox.community/forum/";
 		}
 	}
 	void closeAllTabs()
@@ -539,6 +546,28 @@
 		//GoldSrc
 		if (GoldSrc.WAD.wadIndex.Count() == 0)
 			GoldSrc.WAD.wadIndex = JsonSerializer.Deserialize<Dictionary<string, List<string>>>(Util.Decompress<string>(Convert.FromBase64String(MapParser.GoldSrc.StaticData.wadlist)));
+	}
+
+	void clearMirrorsFileCache()
+	{
+		foreach( var mirror in Manager.MapMirrors)
+		{
+			var sanitizedMirror = Util.ReplaceInvalidChars(mirror.Item1);
+			foreach (var file in FileSystem.Data.FindFile($"{Manager.downloadPath}"))
+				if (file.Contains(sanitizedMirror))
+				{
+					Notify.Create($"'{Manager.downloadPath}{file}' file is removed!");
+					FileSystem.Data.DeleteFile($"{Manager.downloadPath}{file}");
+				}
+		}
+	}
+	void clearAllDownloadFiles()
+	{
+		foreach (var folder in FileSystem.Data.FindDirectory($"{Manager.downloadPath}"))
+		{
+			Notify.Create($"'{Manager.downloadPath}{folder}' folder is removed!");
+			FileSystem.Data.DeleteDirectory($"{Manager.downloadPath}{folder}", true);
+		}
 	}
 	List<string> PathToWadName(List<string> wadList)
 	{

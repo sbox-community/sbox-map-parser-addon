@@ -88,7 +88,7 @@
 <div class="row">
 	@if (Render.TextureCache.textureData.Count() != 0)
 	{
-		@foreach (var textureCacheData in Render.TextureCache.textureData)
+		@foreach (var textureCacheData in Render.TextureCache.textureData) // Need concurrentDictionary
 		{
 			<div class="rowItem @(selectedData.Equals(textureCacheData.Value))" @onclick=@(() => selectRow(textureCacheData.Value))><div style="width:50%;max-width:50%;min-width:50%;justify-content:center;">@(textureCacheData.Key)</div><div style="width:50%;max-width:50%;min-width:50%;justify-content:center">@(textureCacheData.Value.texture.Width)x@(textureCacheData.Value.texture.Height)</div></div>
 		}

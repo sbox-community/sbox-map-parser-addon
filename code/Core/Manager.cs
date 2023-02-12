@@ -237,20 +237,27 @@ namespace MapParser
 			{
 				var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {settings.mapUrl} )" );
 				var http = new Http( new Uri( $"{settings.mapUrl}" ) );
-				var data = await http.GetBytesAsync();
 
-				if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+				try
 				{
-					FileSystem.Data.WriteAllText( $"{mapPath}", Convert.ToBase64String( data ) );
-					notify?.FinishDownload();
-				}
-				else
-				{
-					notify?.FailedDownload();
-					Notify.Create( "Map not found in url!", Notify.NotifyType.Error );
-					return;
-				}
+					var data = await http.GetBytesAsync();
 
+					if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+					{
+						FileSystem.Data.WriteAllText( $"{mapPath}", Convert.ToBase64String( data ) );
+						notify?.FinishDownload();
+					}
+					else
+					{
+						notify?.FailedDownload();
+						Notify.Create( "Map not found in url!", Notify.NotifyType.Error );
+						return;
+					}
+				}
+				catch
+				{
+					Notify.Create( "Map not found in url!", Notify.NotifyType.Error ); // Generally giving 404
+				}
 				http.Dispose();
 			}
 
@@ -329,28 +336,40 @@ namespace MapParser
 					{
 						var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {wadurl} )" );
 						var http = new Http( new Uri( $"{wadurl}" ) );
-						var data = await http.GetBytesAsync();
 
-						if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+						try
 						{
-							notify?.FinishDownload( $"Download successful ( {wadurl} )" );
-							FileSystem.Data.WriteAllText( wadPath, Convert.ToBase64String( data ) );
-						}
-						else
-						{
-							notify?.FailedDownload();
-							Notify.Create( $"{wadName}.wad not found in url {wadurl}", Notify.NotifyType.Error );
+							var data = await http.GetBytesAsync();
 
-							// Some wad filename has uppercase
-							http = new Http( new Uri( $"{wadurl.Replace( wadName, wadName.ToUpper() )}" ) );
-							data = await http.GetBytesAsync();
 							if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
 							{
-								settings.wadUrls[i] = settings.wadUrls[i].Replace( wadName , wadName.ToUpper());
-								i--;
-								http.Dispose();
-								continue;
+								notify?.FinishDownload( $"Download successful ( {wadurl} )" );
+								FileSystem.Data.WriteAllText( wadPath, Convert.ToBase64String( data ) );
 							}
+							else
+							{
+								notify?.FailedDownload();
+								Notify.Create( $"{wadName}.wad not found in url {wadurl}", Notify.NotifyType.Error );
+
+								// Some wad filename has uppercase
+								http = new Http( new Uri( $"{wadurl.Replace( wadName, wadName.ToUpper() )}" ) );
+								try
+								{
+									data = await http.GetBytesAsync();
+									if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+									{
+										settings.wadUrls[i] = settings.wadUrls[i].Replace( wadName , wadName.ToUpper());
+										i--;
+										http.Dispose();
+										continue;
+									}
+								}
+								catch {}
+							}
+						}
+						catch
+						{
+							Notify.Create( $"{wadName}.wad not found in url {wadurl}", Notify.NotifyType.Error );
 						}
 
 						http.Dispose();
@@ -400,20 +419,27 @@ namespace MapParser
 						{
 							var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {skyurl} )" );
 							var http = new Http( new Uri( $"{skyurl}" ) );
-							var data = await http.GetBytesAsync();
 
-							if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( skyPath ) ) )
-								FileSystem.Data.CreateDirectory( Util.PathWithouthFile( skyPath ) );
+							try {
+								var data = await http.GetBytesAsync();
 
-							if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
-							{
-								notify?.FinishDownload( $"Download successful ( {skyurl} )" );
-								FileSystem.Data.WriteAllText( skyPath, Convert.ToBase64String( data ) );
+								if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( skyPath ) ) )
+									FileSystem.Data.CreateDirectory( Util.PathWithouthFile( skyPath ) );
+
+								if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+								{
+									notify?.FinishDownload( $"Download successful ( {skyurl} )" );
+									FileSystem.Data.WriteAllText( skyPath, Convert.ToBase64String( data ) );
+								}
+								else
+								{
+									notify?.FailedDownload( $"Download failed ( {skyurl} )" );
+									Notify.Create( $"{skyName}.tga not found in url {skyurl}", Notify.NotifyType.Error );
+								}
 							}
-							else
+							catch
 							{
 								notify?.FailedDownload( $"Download failed ( {skyurl} )" );
-								Notify.Create( $"{skyName}.tga not found in url {skyurl}", Notify.NotifyType.Error );
 							}
 
 							http.Dispose();
@@ -549,35 +575,24 @@ namespace MapParser
 
 			if ( settings.spawnPoints == null )
 			{
-				if ( bspData.entities.Any( x => x.classname == "info_player_start" ) )
+				foreach ( var classname in new List<string>() { "info_player_start", "info_player_deathmatch", "info_player_allies" } )
 				{
-					var infoPlayer = bspData.entities.Where( x => x.classname == "info_player_start" );
+					var infoPlayer = bspData.entities.Where( x => x.classname == classname );
 
-					foreach ( var info in infoPlayer )
+					if ( infoPlayer.Any() )
 					{
-						if ( info.data.TryGetValue( "origin", out var origin ) )
+						foreach ( var info in infoPlayer )
 						{
-							settings.spawnPoints ??= new();
-							settings.spawnPoints.Add( Vector3.Parse( origin ) );
-						}
-					}
-				}
-				else if ( bspData.entities.Any( x => x.classname == "info_player_deathmatch" ) )
-				{
-					var infoPlayer = bspData.entities.Where( x => x.classname == "info_player_deathmatch" );
-
-					foreach ( var info in infoPlayer )
-					{
-						if ( info.data.TryGetValue( "origin", out var origin ) )
-						{
-							settings.spawnPoints ??= new();
-							settings.spawnPoints.Add( Vector3.Parse( origin ) );
+							if ( info.data.TryGetValue( "origin", out var origin ) )
+							{
+								settings.spawnPoints ??= new();
+								settings.spawnPoints.Add( Vector3.Parse( origin ) );
+							}
 						}
 					}
 				}
 			}
-			
-			if( settings.spawnPoints is not null )
+			if ( settings.spawnPoints is not null )
 				findTeleportPoint = settings.spawnPoints[Game.Random.Int( 0, settings.spawnPoints.Count - 1)]; // + meshdata.vOrigin, is it needed?
 
 			//if ( Game.IsClient )

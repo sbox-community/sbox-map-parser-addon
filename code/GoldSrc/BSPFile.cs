@@ -1,11 +1,8 @@
 using Sandbox;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using static MapParser.GoldSrc.BSPFile;
 using static MapParser.Manager;
 
 namespace MapParser.GoldSrc
@@ -822,20 +819,23 @@ namespace MapParser.GoldSrc
 
 			//textureList = textureList.Distinct().ToList();
 
-			List<SurfaceLightmapData> list = new();
-			for ( var i = 0; i < surfaces.Count(); i++ )
-			{
-				var surface = surfaces[i];
+			if (Game.IsClient)
+			{ 
+				List<SurfaceLightmapData> list = new();
+				for ( var i = 0; i < surfaces.Count(); i++ )
+				{
+					var surface = surfaces[i];
 
-				for ( var j = 0; j < surface.lightmapData.Count; j++ )
-					list.Add(surface.lightmapData[j] );
+					for ( var j = 0; j < surface.lightmapData.Count; j++ )
+						list.Add(surface.lightmapData[j] );
+				}
+				var package = lightmapPackerPage;
+
+				//Log.Info( "LightMap " + settings.mapName );
+
+				PreparingIndicator.Update();
+				lightmap = MIPTEXData.createLightmap( ref package, ref list, Util.PathToMapName( settings.mapName ));
 			}
-			var package = lightmapPackerPage;
-			
-			//Log.Info( "LightMap" );
-
-			PreparingIndicator.Update();
-			lightmap = MIPTEXData.createLightmap( ref package, ref list );
 		}
 
 		public byte[] GetLumpData( LumpType lumpType )

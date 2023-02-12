@@ -57,6 +57,7 @@
 			justify-content:center;
 			border-bottom-width:1px;
 			border-color:black;
+
 			&.True
 			{
 				background: linear-gradient(to bottom, #ff6a6a, #ff1f1f);
@@ -114,6 +115,7 @@
 		selectedMirror = mirror;
 
 		mapList.maps.Clear();
+		mapList.changePage(0);
 
 		var mirrorData = Manager.MapMirrors.Where(x => x.Item1 == mirror).FirstOrDefault();
 
@@ -123,6 +125,8 @@
 		foreach (string line in mirrorData.Item3)
 			if (!line.Contains("sex") || line.Contains("porn"))
 				mapList.maps.Add(line);
+
+		mapList.StateHasChanged();
 	}
 
 	async Task<(string, string, List<string>)> initializeMirrorList(string selectedMirror)
@@ -147,9 +151,9 @@
 			finalData = Util.Decompress<string>(Convert.FromBase64String(FileSystem.Data.ReadAllText(path))).Split(';').ToList();
 		else
 		{
-			foreach (var file in FileSystem.Data.FindFile($"{Manager.downloadPath}/", "*.txt"))
+			foreach (var file in FileSystem.Data.FindFile($"{Manager.downloadPath}", "*.txt"))
 				if (file.Contains(sanitizedMirror))
-					FileSystem.Data.DeleteFile(file);
+					FileSystem.Data.DeleteFile($"{Manager.downloadPath}{file}");
 
 			var http = new Http(new Uri($"{selectedMirror}maps/"));
 			var data = await http.GetBytesAsync();

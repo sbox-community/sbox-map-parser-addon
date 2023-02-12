@@ -70,9 +70,7 @@ namespace MapParser.GoldSrc
 		}
 		public static void clearWAD() => removeWAD();
 
-		// Must be async, otherwise being freezing until to finish of creation, there must be custom shader to do
-		// Already implemented, but, textureCoords and scales are corrupting if we creates all texture after the creation of map
-		public static Texture addTextureWithMIPTEXData( byte[] data, string wadname = "" ) //async
+		public static Texture addTextureWithMIPTEXData( byte[] data, string wadname = "" )
 		{
 			var name = MIPTEXData.GetMipTexName( data );
 			
@@ -189,28 +187,6 @@ namespace MapParser.GoldSrc
 				lastTextureErrors.Clear();
 			}
 		}
-
-
-		/*public static Texture createTexture(string name)
-		{
-			if ( textureData.TryGetValue( name, out var datafounded ) )
-				return MIPTEXData.CreateTexture( ref datafounded );
-			else
-			{
-				Log.Error( "Texture not found!" );
-				return Texture.Invalid;
-			}
-		}
-		public static Texture createTextureWithLightmapped( string name, ref SurfaceLightmapData lightmapData )
-		{
-			if ( textureData.TryGetValue( name, out var datafounded ) )
-				return MIPTEXData.createLightmappedTexture( ref datafounded, ref lightmapData );
-			else
-			{
-				Log.Error( "Texture not found!" );
-				return Texture.Invalid;
-			}
-		}*/
 	}
 	public static class MIPTEXData
 	{
@@ -302,7 +278,6 @@ namespace MapParser.GoldSrc
 				}
 				return (mipData, Width, Height, i);
 			}
-
 		}
 
 		public static Texture CreateTexture( byte[] buffer, string texName )
@@ -329,7 +304,7 @@ namespace MapParser.GoldSrc
 
 		}
 
-		public static Texture createLightmap( ref BSPFile.LightmapPackerPage lightmapPackerPage, ref List<BSPFile.SurfaceLightmapData> lightmap )
+		public static Texture createLightmap( ref BSPFile.LightmapPackerPage lightmapPackerPage, ref List<BSPFile.SurfaceLightmapData> lightmap, string mapName)
 		{
 			PreparingIndicator.Update();
 
@@ -358,16 +333,17 @@ namespace MapParser.GoldSrc
 				}
 			}
 
-			if ( !dst.Any( x => x != 0 ) ) // If lightmap completely black
+			if ( !dst.Any( x => x != 0 ) ) // If lightmap is completely black, becase of building of lightmap on the map compilation?
 			{
 				Notify.Create( "Lightmap is disabled", Notify.NotifyType.Error );
 				return Texture.Transparent;
 			}
 
-			var texture = Texture.Create( lightmapPackerPage.width, lightmapPackerPage.height );
-			texture.WithData( dst );
+			var texture = Texture.Create( lightmapPackerPage.width, lightmapPackerPage.height ).WithData( dst ).Finish();
 
-			return texture.Finish();
+			Render.TextureCache.textureData.TryAdd( $"{mapName}_ligthmap", new() { name = $"{mapName}_ligthmap", type = TextureCacheType.MIPTEX, WADname = "From BSP", texture = texture, width = lightmapPackerPage.width, height = lightmapPackerPage.height } );
+
+			return texture;
 		}
 		public static string GetMipTexName( byte[] buffer )
 		{

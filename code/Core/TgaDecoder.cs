@@ -3,6 +3,7 @@
 using System;
 using Sandbox;
 using System.IO;
+using System.Linq;
 
 namespace TgaDecoderTest
 {
@@ -114,7 +115,11 @@ namespace TgaDecoderTest
                 byte[] decodeBuffer = new byte[decodeBufferLength];
                 int decoded = 0;
                 int offset = 0;
-                while (decoded < decodeBufferLength)
+				var colorDataLength = this.colorData.Count();
+
+				var errorHappened = false; // There were error, for example "gfx/env/tetrisup.tga"
+
+				while (decoded < decodeBufferLength && offset < colorDataLength )
                 {
                     int packet = this.colorData[offset++] & 0xFF;
                     if ((packet & 0x80) != 0)
@@ -128,19 +133,30 @@ namespace TgaDecoderTest
                         {
                             for (int j = 0; j < elementCount; j++)
                             {
-                                decodeBuffer[decoded++] = elements[j];
-                            }
+								if ( decodeBufferLength > decoded )
+									decodeBuffer[decoded++] = elements[j];
+								else
+									errorHappened = true;
+							}
                         }
                     }
                     else
                     {
                         int count = (packet + 1) * elementCount;
+						
                         for (int i = 0; i < count; i++)
                         {
-                            decodeBuffer[decoded++] = this.colorData[offset++];
-                        }
+							if ( decodeBufferLength > decoded && colorDataLength > offset )
+								decodeBuffer[decoded++] = this.colorData[offset++];
+							else
+								errorHappened = true;
+
+						}
                     }
                 }
+				if ( errorHappened )
+					MapParser.Notify.Create( "TGA error! Might be shown glitchy..", MapParser.Notify.NotifyType.Error );
+
                 return decodeBuffer;
             }
         }
