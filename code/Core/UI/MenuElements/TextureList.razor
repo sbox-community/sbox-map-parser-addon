@@ -1,3 +1,5 @@
+<!-- sbox.Community © 2023-2024 -->
+
 @using System;
 @using Sandbox;
 @using Sandbox.UI;
@@ -13,8 +15,8 @@
 <style>
 	
 	TextureList {
-		width:50%;
-		height: 90%;
+		width:90%;
+		height: 100%;
 		border-radius: 2px;
 
 		flex-direction: column;
@@ -26,9 +28,10 @@
 		.rowHeader{
 			background: linear-gradient(to top, #ffe259, #ffa751);
 			width:100%;
-			height: 9%;
-			flex-shrink:0;
+			height: 5%;
 			flex-direction:row;
+			max-height: 5%;
+			min-height: 5%;
 
 			.rowHeader_item{
 				width:100%;
@@ -44,22 +47,21 @@
 		}
 		.row{
 			overflow:scroll;
-			flex-shrink: 0;
 			background-color: #afafaf;
 			width:100%;
 			height: 100%;
 			flex-direction:column;
 
 			.rowItem{
-				width: 100%;
-				height: 10%;
-				min-height: 10%;
-				flex-shrink: 0;
+				width:100%;
+				height:15%;
+				max-height:5%;
+				min-height: 5%;
+				justify-content:center;
 				border-bottom-width:1px;
 				border-color:black;
 				&.True
 				{
-					flex-shrink: 0;
 					background: linear-gradient(to bottom, #ff6a6a, #ff1f1f);
 					&:hover{
 						background: none;
@@ -68,7 +70,6 @@
 				}
 				&.False
 				{
-					flex-shrink: 0;
 					background: linear-gradient(to bottom, #898989, #a4a4a4);
 					&:hover{
 						background: none;
@@ -83,14 +84,16 @@
 
 <div class="rowHeader">
 	<div class="rowHeader_item">Texture</div>
-	<div class="rowHeader_item">Size</div>
+	@if (Render.TextureCache.textureData.Count() != 0) {
+		<div style="width:43%" class="rowHeader_item">Size</div>
+	}
 </div>
 <div class="row">
 	@if (Render.TextureCache.textureData.Count() != 0)
 	{
 		@foreach (var textureCacheData in Render.TextureCache.textureData) // Need concurrentDictionary
 		{
-			<div class="rowItem @(selectedData.Equals(textureCacheData.Value))" @onclick=@(() => selectRow(textureCacheData.Value))><div style="width:50%;max-width:50%;min-width:50%;justify-content:center;">@(textureCacheData.Key)</div><div style="width:50%;max-width:50%;min-width:50%;justify-content:center">@(textureCacheData.Value.texture.Width)x@(textureCacheData.Value.texture.Height)</div></div>
+			<div class="rowItem @(selectedData.Equals(textureCacheData.Value))" @onclick=@(() => selectRow(textureCacheData.Value))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(Util.PathToMapNameWithExtension(textureCacheData.Key))</div><div style="width:30%;max-width:30%;min-width:30%;justify-content:center">@(textureCacheData.Value.texture.Width)x@(textureCacheData.Value.texture.Height)</div></div>
 		}
 	}
 	@if (Render.TextureCache.textureData.Count() == 0)
@@ -120,8 +123,8 @@
 		canvas.Style.BackgroundRepeat = BackgroundRepeat.NoRepeat;
 		canvas.Style.BackgroundSizeX = Length.Pixels(packagedata.texture.Width);
 		canvas.Style.BackgroundSizeY = Length.Pixels(packagedata.texture.Height);
-		canvas.Style.BackgroundPositionX = Length.Fraction((1f - (packagedata.texture.Width / 256f))*0.5f);
-		canvas.Style.BackgroundPositionY = Length.Fraction((1f - (packagedata.texture.Height / 256f)) * 0.5f);
+		canvas.Style.BackgroundPositionX = Length.Fraction((1f - (packagedata.texture.Width / 328f)) * 0.5f); //canvas.ComputedStyle.Width.Value.Value
+		canvas.Style.BackgroundPositionY = Length.Fraction((1f - (packagedata.texture.Height / 328f)) * 0.5f);
 
 		if (Manager.mainMenu != null && Manager.mainMenu.IsValid())
 			(Manager.mainMenu as Menu).selectedWAD = packagedata.WADname;

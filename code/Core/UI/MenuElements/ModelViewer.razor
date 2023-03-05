@@ -1,0 +1,233 @@
+<!-- sbox.Community © 2023-2024 -->
+
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using Sandbox.Diagnostics;
+@using System.Collections.Generic;
+@using System.Linq;
+@using System.Threading.Tasks;
+@using Sandbox.Html;
+
+@namespace MapParser
+@inherits Panel
+
+<style>
+	ModelViewer {
+		width:100%;
+		height:100%;
+	}
+</style>
+
+@code
+{
+	ScenePanel scenePanel;
+	public SceneWorld world;
+	Orbit orbitCamera;
+	CameraMode CameraController;
+	//SceneModel Model;
+	MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL Model;
+	SceneLight lightA;
+	SceneLight lightB;
+	SceneLight lightC;
+	SceneLight lightD;
+
+	Vector3 camPos;
+	Angles camAngles;
+	float fieldOfView = 90.0f;
+	float targetDistance = 25;
+
+	public ModelViewer() {
+		world = new SceneWorld();
+
+		orbitCamera = new Orbit(Vector3.Up * 48.0f, Vector3.Backward + Vector3.Down * 0.2f, 100.0f);
+		CameraController = orbitCamera;
+
+		/*new SceneLight(world, new Vector3(15, -25, 130), 500.0f, Color.Red * 3.5f);
+		new SceneLight(world, new Vector3(15, 30, 135), 500, Color.Green * 7.0f);
+		new SceneLight(world, new Vector3(20, -25, 80), 500, Color.Magenta * 6.5f);
+		new SceneLight(world, new Vector3(23, 30, 80), 500, Color.Blue * 180.0f);
+
+		var LightWarm = new SceneSpotLight(world, new Vector3(300, 50, 30), new Color(1.0f, 0.95f, 0.8f) * 50.0f);
+		LightWarm.Rotation = Rotation.LookAt(-LightWarm.Position);
+		var LightWarm2 = new SceneSpotLight(world, new Vector3(300, -50, 30), new Color(1.0f, 0.95f, 0.8f) * 50.0f);
+		LightWarm2.Rotation = Rotation.LookAt(-LightWarm2.Position);
+		var LightWarm3 = new SceneSpotLight(world, new Vector3(100, 50, 20), new Color(1.0f, 0.95f, 0.8f) * 5.0f);
+		LightWarm3.Rotation = Rotation.LookAt(-LightWarm3.Position);
+		var LightWarm4 = new SceneSpotLight(world, new Vector3(100, -50, 20), new Color(1.0f, 0.95f, 0.8f) * 5.0f);
+		LightWarm4.Rotation = Rotation.LookAt(-LightWarm4.Position);*/
+
+		lightA = new SceneLight(world, new Vector3(100, 0, 100), 500, new Color(1.0f, 0.9f, 0.7f).Lighten(2));
+		lightB = new SceneLight(world, new Vector3(-100, 0, 100), 500, new Color(1.0f, 0.9f, 0.7f).Lighten(2));
+		lightC = new SceneLight(world, new Vector3(0, 100, 100), 500, new Color(1.0f, 0.9f, 0.7f).Lighten(2));
+		lightD = new SceneLight(world, new Vector3(0, -100, 100), 500, new Color(1.0f, 0.9f, 0.7f).Lighten(2));
+
+		Style.FlexWrap = Wrap.Wrap;
+		Style.JustifyContent = Justify.Center;
+		Style.AlignItems = Align.Center;
+		Style.AlignContent = Align.Center;
+
+		scenePanel = AddChild<ScenePanel>();
+		scenePanel.Camera.World = world;
+		scenePanel.Camera.FieldOfView = 90;
+
+		scenePanel.Style.Width = Length.Fraction(1f);
+		scenePanel.Style.Height = Length.Fraction(1f);
+		scenePanel.Camera.ZFar = 15000;
+		scenePanel.Camera.ZNear = 5;
+		scenePanel.Camera.AmbientLightColor = Color.Gray * 0.01f;
+
+		//SetModel("models/citizen/citizen.vmdl");
+		scenePanel.Camera.Name = "Model Viewer";
+
+		scenePanel.AddEventListener("onclose", () => {
+			world.Delete();
+		});
+
+		if (Manager.mainMenu != null && (Manager.mainMenu as Menu) != null && (Manager.mainMenu as Menu).modellist != null && (Manager.mainMenu as Menu).modellist.mv == null)
+			(Manager.mainMenu as Menu).modellist.mv = this;
+	}
+
+	~ModelViewer() {
+		if (world != null) {
+			world.Delete();
+			world = null;
+		}
+		if (scenePanel != null) {
+			scenePanel.Delete();
+			scenePanel = null;
+		}
+		if (Model != null) {
+			Model.Delete();
+			Model = null;
+		}
+	}
+
+	public override void OnMouseWheel(float value) {
+		base.OnMouseWheel(value);
+		targetDistance += value * 2.0f;
+		targetDistance = targetDistance.Clamp(1, 100);
+	}
+
+	public override void Tick() {
+
+		base.Tick();
+		if (Model == null)
+			return;
+
+		// Need rendered from ScenePanel DrawContent
+		Model.Render();
+
+		float closeToFace = fieldOfView.LerpInverse(30, 2);
+		var eyes = Vector3.Up * 65;
+
+		orbitCamera.Distance = 500;
+		orbitCamera.Center = Vector3.Lerp( Vector3.Up * 40.0f, eyes, closeToFace );
+		orbitCamera.PitchLimit = new Vector2( -2, 85 );
+		orbitCamera.Offset = orbitCamera.Angles.ToRotation().Left * 45.0f.LerpTo( 5, closeToFace );
+
+		scenePanel.Camera.FieldOfView = fieldOfView;
+
+		CameraController?.Update(this);
+		fieldOfView = fieldOfView.LerpTo(targetDistance, Time.Delta * 10f, true);
+
+
+	}
+	protected override int BuildHash() {
+		return HashCode.Combine(this);
+	}
+
+	public class CameraMode {
+		public virtual void Update(ModelViewer mv) {
+		}
+	}
+
+	/*public void SetModel(string modelName) {
+		* 
+		if (Model != null) {
+			Model.Delete();
+			Model = null;
+		}
+
+		var model = Sandbox.Model.Load(modelName);
+		Model = new SceneModel(world, model, Transform.Zero);
+
+		Model.Update(0.1f);
+	}*/
+
+	public void SetModel(ref string key, ref (List<(MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>[][], MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>, Texture, List<float[]>)>, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data) {
+
+		if (Model != null) {
+			Model.Delete();
+			Model = null;
+		}
+
+		var model = data.Item4;
+		if (model == null) {
+			MapParser.Manager.SpawnParameter settings = new();
+			settings.position = Vector3.Zero;
+			settings.sceneWorld = world;
+
+			var entData = data.Item2;
+			entData.data["origin"] = "0,0,0";
+
+			model = MapParser.GoldSrc.Entities.MDLEntity.Create(ref data.Item1, ref entData, ref settings, ref data.Item3);
+			data.Item4 = model;
+			MapParser.GoldSrc.Entities.ModelRenderer.ModelCache[key] = data;
+		}
+		model.CL.render = true;
+		Model = model.CL;
+
+		/*Model = new SceneModel(world, model.CL.createModelForMV(), Transform.Zero);
+		Model.Update(0.1f);*/
+	}
+
+	private class Orbit : CameraMode {
+		public Vector3 Center;
+		public Vector3 Offset;
+		public Angles Angles;
+		public float Distance;
+
+		public Vector2 PitchLimit = new Vector2(-90, 90);
+		public Vector2 YawLimit = new Vector2(-360, 360);
+
+		public Angles HomeAngles;
+		public Vector3 SpinVelocity;
+
+		public Orbit(Vector3 center, Vector3 normal, float distance) {
+			Center = center;
+			HomeAngles = Rotation.LookAt(normal.Normal).Angles();
+			Angles = HomeAngles;
+			Distance = distance;
+		}
+
+		public override void Update(ModelViewer mv) {
+			if (mv.HasActive) {
+				var move = Mouse.Delta;
+
+				SpinVelocity.x = move.y * -1.0f;
+				SpinVelocity.y = move.x * 3.0f;
+
+				Angles.pitch += SpinVelocity.x * 0.1f;
+				Angles.yaw += SpinVelocity.y * 0.1f;
+			}
+			else {
+				SpinVelocity = SpinVelocity.LerpTo(0, Time.Delta * 2.0f);
+				Angles.pitch += SpinVelocity.x * Time.Delta;
+				Angles.yaw += SpinVelocity.y * Time.Delta;
+			}
+
+
+			Angles.roll = 0;
+
+			Angles = Angles.Normal;
+
+			Angles.pitch = Angles.pitch.Clamp(PitchLimit.x, PitchLimit.y);
+			Angles.yaw = Angles.yaw.Clamp(YawLimit.x, YawLimit.y);
+
+
+			mv.scenePanel.Camera.Rotation = Rotation.From(Angles);
+			mv.scenePanel.Camera.Position = Center + (mv.scenePanel.Camera.Rotation.Backward * Distance) + Offset;
+		}
+	}
+}

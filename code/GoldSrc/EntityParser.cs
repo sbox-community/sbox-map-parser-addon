@@ -1,3 +1,5 @@
+// sbox.Community © 2023-2024
+
 using System;
 using System.Collections.Generic;
 using System.Text;

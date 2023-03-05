@@ -1,8 +1,11 @@
+// sbox.Community © 2023-2024
+
 using Sandbox;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using static MapParser.Manager;
 
 namespace MapParser.GoldSrc
@@ -197,7 +200,7 @@ namespace MapParser.GoldSrc
 					Notify.Create( $"Version is not 30", Notify.NotifyType.Error );
 			}
 
-			PreparingIndicator.Update();
+			PreparingIndicator.Update( "Map" );
 
 			var texinfoa = new List<Texinfo>();
 
@@ -206,8 +209,8 @@ namespace MapParser.GoldSrc
 			for ( int i = 0; i < texinfoCount; i++ )
 			{
 				int infoOffs = i * 0x28;
-				var textureMappingS = Util.ReadVec4( texinfoData, infoOffs + 0x00 );
-				var textureMappingT = Util.ReadVec4( texinfoData, infoOffs + 0x10 );
+				var textureMappingS = Util.ReadVec4( ref texinfoData, infoOffs + 0x00 );
+				var textureMappingT = Util.ReadVec4( ref texinfoData, infoOffs + 0x10 );
 				var textureMapping = new TexinfoMapping { s = textureMappingS, t = textureMappingT };
 				int miptex = BitConverter.ToInt32( texinfoData, infoOffs + 0x20 );
 				int flags = BitConverter.ToInt32( texinfoData, infoOffs + 0x24 );
@@ -233,7 +236,7 @@ namespace MapParser.GoldSrc
 					stream.Position = 0x04 + i * 0x04;
 					miptexOffs = reader.ReadInt32();
 				}
-				var texName = Util.ReadString( textures, miptexOffs + 0x00, 0x10, true );
+				var texName = Util.ReadString( ref textures, miptexOffs + 0x00, 0x10, true );
 				int hasTextureData;
 				using ( var stream = new MemoryStream( textures ) )
 				using ( var reader = new BinaryReader( stream ) )
@@ -354,7 +357,7 @@ namespace MapParser.GoldSrc
 					iHeadnodes[2] = readerModel.ReadInt32();
 					iHeadnodes[3] = readerModel.ReadInt32();
 
-					var nVisLeafs = readerModel.ReadInt32(); // Giving only -6 ?
+					var nVisLeafs = readerModel.ReadUInt32(); // Giving only -6 ?
 
 					var iFirstFace = readerModel.ReadInt32();
 					var nFaces = readerModel.ReadInt32();
@@ -366,7 +369,7 @@ namespace MapParser.GoldSrc
 			entities = EntityParser.parseEntities( GetLumpData( LumpType.ENTITIES ) );
 			var entitiesCount = entities.Count;
 
-			PreparingIndicator.Update();
+			PreparingIndicator.Update( "Map" );
 
 			var VIS = GetLumpData( LumpType.VISIBILITY );
 
@@ -430,7 +433,7 @@ namespace MapParser.GoldSrc
 
 			for ( int i = 0; i < leaves.Count; i++ )
 			{
-				PreparingIndicator.Update();
+				PreparingIndicator.Update("VisLeaves");
 
 				//var str = i + "--> ";
 				//var onceki = 0;
@@ -552,7 +555,7 @@ namespace MapParser.GoldSrc
 			byte[] lighting = GetLumpData( LumpType.LIGHTING );
 			for ( int i = 0; i < faces.Count; i++ )
 			{
-				PreparingIndicator.Update();
+				PreparingIndicator.Update( "Map" );
 
 				vertexList = new();
 				lightmapList = new();
@@ -627,6 +630,8 @@ namespace MapParser.GoldSrc
 
 						if ( face.texName != prevFace.texName )
 							canMerge = false;
+						//else if ( models[prevFace.index] != models[face.index] ) // verify
+						//	canMerge = false;
 
 						//if ( canMerge )
 						//	mergeSurface = surfaces.LastOrDefault();
@@ -649,7 +654,8 @@ namespace MapParser.GoldSrc
 						double py = vertexes[vertIndex * 3 + 1];
 						double pz = vertexes[vertIndex * 3 + 2];
 
-						double texCoordS = Math.Round( px * m.s.x + py * m.s.y + pz * m.s.z + m.s.w);
+						// There are still rounding errors..
+						double texCoordS = Math.Round( px * m.s.x + py * m.s.y + pz * m.s.z + m.s.w); 
 						double texCoordT = Math.Round( px * m.t.x + py * m.t.y + pz * m.t.z + m.t.w);
 
 						vertexData[dstOffsVertex++] = px;
@@ -800,7 +806,7 @@ namespace MapParser.GoldSrc
 						if ( entity is null )
 							meshDataList.Add( new meshData() { vertices = vertexList, indices = indexList, faceIndex = i, textureName = face.texName } );
 						else
-							entityMeshDataList.Add( new entityMeshData() { vertices = vertexList, indices = indexList, faceIndex = i, textureName = face.texName, entity = entity, nMins = model is not null ? model.Value.Item4 : Vector3.Zero , nMaxs = model is not null ? model.Value.Item5 : Vector3.Zero, vOrigin = model is not null ? model.Value.Item6 : Vector3.Zero } );
+							entityMeshDataList.Add( new entityMeshData() { vertices = vertexList, indices = indexList, faceIndex = i, textureName = face.texName, entity = entity, nMins = model is not null ? model.Value.Item4 : Vector3.Zero, nMaxs = model is not null ? model.Value.Item5 : Vector3.Zero, vOrigin = model is not null ? model.Value.Item6 : Vector3.Zero } );
 					}
 
 					//////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -820,7 +826,8 @@ namespace MapParser.GoldSrc
 			//textureList = textureList.Distinct().ToList();
 
 			if (Game.IsClient)
-			{ 
+			{
+				PreparingIndicator.Update( "Lightmap" );
 				List<SurfaceLightmapData> list = new();
 				for ( var i = 0; i < surfaces.Count(); i++ )
 				{
@@ -833,7 +840,7 @@ namespace MapParser.GoldSrc
 
 				//Log.Info( "LightMap " + settings.mapName );
 
-				PreparingIndicator.Update();
+				PreparingIndicator.Update("Lightmap");
 				lightmap = MIPTEXData.createLightmap( ref package, ref list, Util.PathToMapName( settings.mapName ));
 			}
 		}

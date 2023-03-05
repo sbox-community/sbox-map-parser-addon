@@ -1,4 +1,5 @@
 ﻿//https://github.com/wertrain/tga-decoder-cs
+// sbox.Community © 2023-2024
 
 using System;
 using Sandbox;

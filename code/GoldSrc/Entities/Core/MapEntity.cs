@@ -1,122 +1,48 @@
-﻿using System;
+﻿// sbox.Community © 2023-2024
+
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Sandbox;
 using static MapParser.Manager;
 
-namespace MapParser.GoldSrc
+namespace MapParser.GoldSrc.Entities
 {
-	public partial class Entity
+	public partial class Map
 	{
-		public partial class MapEntity : RenderEntity
+		public Map_SV SV;
+		public Map_CL CL;
+
+		public static Map Create( ref SpawnParameter settings, ref BSPFile bspData, ref List<Texture> skyTextures, ref List<(List<Vertex>, List<int>, string, int)> meshInfo, ref ModelBuilder modelBuilder )
 		{
-			public Vector3 Mins;
-			public Vector3 Maxs;
-			private static Material renderMat = Material.FromShader( "shaders/goldsrc_render.shader" );
-			private Texture lightmap;
-			private List<(VertexBuffer, Texture, int)> vertexBuffer = new(); // int: faceindex
-			private int vertexBufferCount;
-			public bool render = false;
-			public EntityParser.EntityData entity;
-			//public int meshCount = 0; // debug purposes
-			float opacity = 1f;
-			Vector3 insidePosition = Vector3.Zero;
-			public Map parent;
+			Map ent = new Map();
 
-			public MapEntity( SpawnParameter settings, Texture lightmap, Map parent, EntityParser.EntityData entity, List<(List<Vertex>, List<int>, string, int)> meshInfo, Vector3 Mins, Vector3 Maxs, Vector3 vOrigin )
+			if ( Game.IsServer )
+				ent.SV = new Map_SV( ref settings, ref modelBuilder );
+			else
+				ent.CL = new Map_CL( ref settings, ref bspData, ref skyTextures, ref meshInfo );
+
+			return ent;
+		}
+
+		public void Delete()
+		{
+			if ( SV != null && SV.IsValid() )
+				SV.Delete();
+
+			if ( CL != null && CL.IsValid() )
 			{
-				this.lightmap = lightmap;
-				this.entity = entity;
-				this.parent = parent;
-				this.Mins = Mins;
-				this.Maxs = Maxs;
-
-				insidePosition = settings.position + vOrigin;
-
-				Transmit = TransmitType.Always;
-				Vector3 ent_origin = Vector3.Zero;
-
-				if ( entity.data.TryGetValue( "origin", out var origin ) )
-					ent_origin = Vector3.Parse( origin );
-
-				insidePosition += ent_origin;
-
-				if ( entity.data.TryGetValue( "renderamt", out var renderamt ) )
-					opacity = int.Parse( renderamt ) / 255f;
-
-				this.Mins += insidePosition;
-				this.Maxs += insidePosition;
-
-				var vertexBufferIndex = 0;
-				Dictionary<int, string> texturesNeedLoaded = new();
-
-				foreach ( var mesh in meshInfo )
-				{
-					PreparingIndicator.Update();
-
-					VertexBuffer buffer = new();
-					buffer.Init( true );
-
-					foreach ( var vertex in mesh.Item1 )
-						buffer.Add( new( vertex.Position + settings.position + ent_origin, vertex.Normal, vertex.Tangent, vertex.TexCoord0 ) );
-
-					foreach ( var indice in mesh.Item2 )
-						buffer.AddRawIndex( indice );
-
-					// Subject to change
-					var findTexture = MapParser.Render.TextureCache.textureData.TryGetValue( mesh.Item3, out var texCacheData );
-					if ( !findTexture )
-						texturesNeedLoaded.Add( vertexBufferIndex, mesh.Item3 );
-
-					vertexBuffer.Add( (buffer, findTexture ? texCacheData.texture : Texture.Invalid, mesh.Item4) );
-
-					vertexBufferIndex++;
-				}
-
-				vertexBufferCount = vertexBuffer.Count();
-
-				createTextures( texturesNeedLoaded, settings, this );
-				
-				//meshCount = meshInfo.Count();
-			}
-			public async void createTextures( Dictionary<int, string> texturesNeedLoaded, SpawnParameter settings, MapEntity mapEntity ) => await GameTask.RunInThreadAsync( () => TextureCache.addTextures( texturesNeedLoaded, settings, mapEntity: mapEntity ) );
-
-			public void Render()
-			{
-				if ( !render )
-					return;
-
-				Graphics.Attributes.Set( "TextureLightmap", lightmap );
-				Graphics.Attributes.Set( "Opacity", opacity );
-
-
-				for (var i = 0; i < vertexBufferCount; i++ )
-				{
-					var vertices = vertexBuffer[i];
-					Graphics.Attributes.Set( "TextureDiffuse", vertices.Item2 );
-					vertices.Item1.Draw( renderMat );
-				}
-				//DebugOverlay.Text( $"{entity.classname}",insidePosition, 0f );
-				//DebugOverlay.Box( Mins, Maxs, Color.Red );
-			}
-			public void updateTexture( int key, Texture newTex )
-			{
-				PreparingIndicator.Update();
-
-				for ( var i = 0; i < vertexBuffer.Count(); i++ )
-				{
-					var vb = vertexBuffer[i];
-
-					if ( key == i )
-						vb.Item2 = newTex;
-
-					vertexBuffer[i] = vb;
-				}
+				CL.removed = true;
+				CL.Delete();
 			}
 		}
 
-		public partial class Map : RenderEntity
+		// No link required
+		public bool Link()
+		{
+			return true;
+		}
+
+		public partial class Map_CL : SceneCustomObject
 		{
 			private List<Vector3> AABB;
 			private Vector3 Mins;
@@ -135,12 +61,15 @@ namespace MapParser.GoldSrc
 			int PVSCount;
 			int leavesCount;
 			int vertexBufferCount;
-			public List<MapEntity> entities = new();
+			public List<MapModelEntity> entities = new();
 			List<List<int>> entitiesPVS = new();
-			bool initialize = true;
+			public List<MDLEntity> models = new();
+			List<List<int>> modelsPVS = new();
 			List<BBox> freeze = new();
 			private bool insideMap = false;
 			private bool insideMapChanged = false;
+			public bool removed = false;
+			public bool hasModelEntity = false;
 
 			//int entityMeshCount = 0; // debug purposes
 			//int currentEntityMeshCount = 0; // debug purposes
@@ -183,8 +112,17 @@ namespace MapParser.GoldSrc
 				Vector3.Down,
 			};*/
 
-			public Map( SpawnParameter settings, BSPFile bspData, List<Texture> skyTextures, List<(List<Vertex>, List<int>, string, int)> meshInfo )
+			public Map_CL( ref SpawnParameter settings, ref BSPFile bspData, ref List<Texture> skyTextures, ref List<(List<Vertex>, List<int>, string, int)> meshInfo ) : base( settings.sceneWorld )
 			{
+				Flags.IsOpaque = true;
+				Flags.IsTranslucent = false;
+				Flags.IsDecal = false;
+				Flags.OverlayLayer = false;
+				Flags.BloomLayer = false;
+				Flags.ViewModelLayer = false;
+				Flags.SkyBoxLayer = false;
+				Flags.NeedsLightProbe = true;
+
 				lightmap = bspData.lightmap;
 				leaves = bspData.leaves;
 				this.skyTextures = skyTextures;
@@ -198,7 +136,7 @@ namespace MapParser.GoldSrc
 
 				foreach ( var mesh in meshInfo )
 				{
-					PreparingIndicator.Update();
+					PreparingIndicator.Update( "Map" );
 
 					Vertex[] vertexs = new Vertex[mesh.Item1.Count()];
 
@@ -220,7 +158,7 @@ namespace MapParser.GoldSrc
 						texturesNeedLoaded.Add( vertexBufferIndex, mesh.Item3 );
 
 					vertexBuffer.Add( (buffer, findTexture ? texCacheData.texture : Texture.Invalid, mesh.Item4) );
-					
+
 					vertexBufferNormals.Add( Normal );
 					vertexBufferIndex++;
 				}
@@ -248,9 +186,7 @@ namespace MapParser.GoldSrc
 
 				Center = Position - settings.center;
 
-				RenderBounds = new BBox( Mins, Maxs );
-
-				Transmit = TransmitType.Always;
+				Bounds = new BBox( Mins, Maxs ); // TODO: fix, it causes invisible problem
 
 				PVS = new bool[vertexBuffer.LastOrDefault().Item3 + 1];
 				PVSCount = PVS.Count();
@@ -267,7 +203,12 @@ namespace MapParser.GoldSrc
 				createTextures( texturesNeedLoaded, settings, this );
 			}
 
-			public async void createTextures( Dictionary<int, string> texturesNeedLoaded, SpawnParameter settings, Map map ) => await GameTask.RunInThreadAsync( () => TextureCache.addTextures( texturesNeedLoaded, settings, map: map ) );
+			~Map_CL()
+			{
+				Event.Unregister( this );
+			}
+
+			public async void createTextures( Dictionary<int, string> texturesNeedLoaded, SpawnParameter settings, Map_CL map ) => await GameTask.RunInThreadAsync( () => TextureCache.addTextures( texturesNeedLoaded, settings, map: map ) );
 
 			// Finding parent leaf of entities, idk is it correct way to PVS, couldn't find info about it, that is my implementation..
 			public void findPVSForEntities()
@@ -278,32 +219,56 @@ namespace MapParser.GoldSrc
 				var entIndex = 0;
 				foreach ( var ent in entities )
 				{
-					var entBBox = new BBox( ent.Mins, ent.Maxs );
+					var entBBox = ent.Bounds;
 					var leafindex = 0;
 					foreach ( var leaf in leaves )
 					{
 						if ( entBBox.Overlaps( leaf.BBox ) )
 							entitiesPVS[leafindex].Add( entIndex );
+
 						leafindex++;
 					}
 					entIndex++;
 				}
 			}
 
-			public void updateEntityRenderBounds()
+			public void findPVSForModelEntities()
+			{
+				foreach ( var leaf in leaves )
+					modelsPVS.Add( new() );
+
+				var modelIndex = 0;
+				foreach ( var model in models )
+				{
+					var modelBBox = model.CL.Bounds;
+					var leafindex = 0;
+					foreach ( var leaf in leaves )
+					{
+						if ( modelBBox.Overlaps( leaf.BBox ) )
+							modelsPVS[leafindex].Add( modelIndex );
+						leafindex++;
+					}
+					modelIndex++;
+				}
+				hasModelEntity = true;
+			}
+
+			public void RegisterEvent() => Event.Register( this );
+
+			/*public void updateEntityRenderBounds()
 			{
 				foreach ( var ent in entities )
 				{
-					ent.RenderBounds = RenderBounds;
+					ent.Bounds = Bounds;
 					//entityMeshCount += ent.meshCount;
 				}
-			}
+			}*/
 
 			public void updateTexture( int key, Texture newTex )
 			{
-				PreparingIndicator.Update();
+				PreparingIndicator.Update("Texture");
 
-				for ( var i = 0; i < vertexBuffer.Count() ; i++ )
+				for ( var i = 0; i < vertexBuffer.Count(); i++ )
 				{
 					var vb = vertexBuffer[i];
 					if ( key == i )
@@ -351,6 +316,9 @@ namespace MapParser.GoldSrc
 			[Event.Tick]
 			public void Tick()
 			{
+				if ( Game.IsServer || removed )
+					return;
+
 				if ( insideMapChanged != insideMap )
 				{
 					insideMapChanged = insideMap;
@@ -367,7 +335,7 @@ namespace MapParser.GoldSrc
 				// Render map if we are inside it
 				var bbox = Game.LocalClient.Pawn.WorldSpaceBounds;
 
-				if ( !bbox.Overlaps( RenderBounds ) )
+				if ( !bbox.Overlaps( Bounds ) )
 				{
 					if ( insideMap )
 						insideMap = false;
@@ -375,7 +343,7 @@ namespace MapParser.GoldSrc
 				}
 				else
 					if ( !insideMap )
-						insideMap = true;
+					insideMap = true;
 
 				if ( leavesCount != 0 )
 				{
@@ -409,6 +377,9 @@ namespace MapParser.GoldSrc
 					foreach ( var ent in entities )
 						ent.render = false;
 
+					foreach ( var model in models )
+						model.CL.render = false;
+
 					for ( var i = 0; i < leavesCount; i++ )
 					{
 						var leaf = leaves[i];
@@ -425,8 +396,18 @@ namespace MapParser.GoldSrc
 									{
 										//if( !entities[entpvsid].render )
 										//currentEntityMeshCount += entities[entpvsid].meshCount;
-										
+
 										entities[entpvsid].render = true;
+									}
+
+									if( hasModelEntity ) { 
+										foreach ( var modelpvsid in modelsPVS[ix] )
+										{
+											//if( !entities[entpvsid].render )
+											//currentEntityMeshCount += entities[entpvsid].meshCount;
+
+											models[modelpvsid].CL.render = true;
+										}
 									}
 
 									var leaf2 = leaves[ix];
@@ -457,6 +438,18 @@ namespace MapParser.GoldSrc
 
 								entities[entpvsid].render = true;
 							}
+
+							if ( hasModelEntity )
+							{
+								foreach ( var modelpvsid in modelsPVS[i] )
+								{
+									//if( !entities[entpvsid].render )
+									//currentEntityMeshCount += entities[entpvsid].meshCount;
+
+									models[modelpvsid].CL.render = true;
+								}
+							}
+
 							//break;
 						}
 						//DebugOverlay.Box( leaf.BBox.Mins, leaf.BBox.Maxs );
@@ -464,23 +457,10 @@ namespace MapParser.GoldSrc
 				}
 			}
 
-			public override void DoRender( SceneObject obj )
+			public override void RenderSceneObject()
 			{
 				if ( !insideMap )
 					return;
-
-				if ( initialize )
-				{
-					obj.Flags.IsOpaque = true;
-					obj.Flags.IsTranslucent = false;
-					obj.Flags.IsDecal = false;
-					obj.Flags.OverlayLayer = false;
-					obj.Flags.BloomLayer = false;
-					obj.Flags.ViewModelLayer = false;
-					obj.Flags.SkyBoxLayer = false;
-					obj.Flags.NeedsLightProbe = true;
-					initialize = false;
-				}
 
 				if ( Graphics.LayerType != SceneLayerType.Opaque )
 					return;
@@ -493,7 +473,7 @@ namespace MapParser.GoldSrc
 					sky_vb.Clear();
 
 					for ( var j = 0; j < 4; ++j )
-						sky_vb.Add( new Vertex( skyAABB[sky_faceIndices[(i * 4) + j]], Vector3.Left, Vector3.Left, sky_uv[j] ) ); //sky_vb.Add( new Vertex( AABB[sky_faceIndices[(i * 4) + j]], Vector3.Cross( sky_uAxis[i], sky_vAxis[i] ), sky_uAxis[i], sky_uv[j] ) );
+						sky_vb.Add( new Vertex( skyAABB[sky_faceIndices[i * 4 + j]], Vector3.Left, Vector3.Left, sky_uv[j] ) ); //sky_vb.Add( new Vertex( AABB[sky_faceIndices[(i * 4) + j]], Vector3.Cross( sky_uAxis[i], sky_vAxis[i] ), sky_uAxis[i], sky_uv[j] ) );
 
 					sky_vb.AddRawIndex( 3 );
 					sky_vb.AddRawIndex( 0 );
@@ -512,7 +492,7 @@ namespace MapParser.GoldSrc
 				Graphics.Attributes.Set( "Opacity", 1f );
 				Graphics.Attributes.Set( "Pixelation", clientSettings.pixelation );
 
-				for (var i = 0; i < vertexBufferCount; i++ )
+				for ( var i = 0; i < vertexBufferCount; i++ )
 				{
 					var vertices = vertexBuffer[i];
 
@@ -526,6 +506,17 @@ namespace MapParser.GoldSrc
 				// Rendering Entities
 				foreach ( var ent in entities )
 					ent.Render();
+
+				// Rendering Models
+				foreach ( var model in models )
+					model.CL.Render();
+
+				/*for ( var i = 0; i < leavesCount; i++ )
+				{
+					var leaf = leaves[i];
+					DebugOverlay.Box( leaf.BBox.Mins, leaf.BBox.Maxs );
+				}*/
+
 			}
 
 			/*protected static Vector2 Planar( Vector3 pos, Vector3 uAxis, Vector3 vAxis )
@@ -550,6 +541,25 @@ namespace MapParser.GoldSrc
 				}
 				binormal = Vector3.Cross( normal, tangent ).Normal;
 			}*/
+		}
+
+		public partial class Map_SV : ModelEntity
+		{
+			public List<MDLEntity> models = new List<MDLEntity>();
+			public Map_SV() { }
+			public Map_SV( ref SpawnParameter settings, ref ModelBuilder model ) {
+
+				Model = model.Create();
+				SetupPhysicsFromModel( PhysicsMotionType.Static );
+				Position = settings.position;
+				Rotation = Rotation.From( settings.angles );
+				PhysicsEnabled = false;
+				EnableDrawing = false;
+				Tags.Add( "solid" );
+				EnableTraceAndQueries = true;
+				Predictable = false;
+			}
+
 		}
 	}
 }

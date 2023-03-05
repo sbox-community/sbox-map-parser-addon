@@ -1,3 +1,5 @@
+<!-- sbox.Community © 2023-2024 -->
+
 @using System;
 @using Sandbox;
 @using Sandbox.UI;
@@ -228,6 +230,25 @@
 						}
 					}
 				}
+				.tab_4
+				{
+					.utility-section{
+						background-color:red;
+						width:85%;
+						height:95%;
+						margin: 10 10 10 0;
+						box-shadow: 0px 0px 10px 3px rgba(25, 25, 25, 0.9);
+						background-color: #afafaf;
+
+						.tab_4_3
+						{
+							flex-direction: column;
+							margin:10px;
+						}
+					}
+
+					
+				}
 			}
 		}
 	}
@@ -332,17 +353,52 @@
 			<ExternalMapList @ref="externalMapList"></ExternalMapList>
 		</div>
 		<div style="display:none;" class="tab_4" @ref="tab_4">
-			<div style="flex-direction:column;">
-				<div style="height:60%;flex-direction:row;">
-					<TextureList @ref="texturelist"></TextureList>
-					<div @ref="canvas" style="top:10px;width:256px;height:256px;box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);"></div>
+			<div style="flex-direction:row;">
+				<UtilityList @menuInstance=@this></UtilityList>
+				<div class="utility-section">
+					<div @ref="tab_4_0" style="tab_4">
+						<div style="justify-content:center;align-content:center;align-items:center;align-self:center;width:100%;height:100%;flex-direction:column;font-family:Tahoma;">
+							<div style="font-size:30px;">Utilities</div>
+						</div>
+					</div>
+					<div style="display:none;" class="tab_4" @ref="tab_4_1">
+						<div style="flex-direction:row;">
+							<div style="height:95%;width:50%;flex-direction:row;">
+								<TextureList @ref="texturelist"></TextureList>
+							</div>
+							<div style="height:95%;width:50%;flex-direction:column;justify-content:center;align-content:center;align-items:center;align-self:center;">
+								<div @ref="canvas" style="margin-bottom:15px;top:10px;width:328px;height:328px;box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);"></div>
+								<div style="min-height:3.5%;">Cached Texture: @Render.TextureCache.textureData.Count()   Cached WAD: @GoldSrc.TextureCache.WADCache.Count()  Source: @selectedWAD</div>
+								<div style="margin-top:5px">
+									<Button style="width:45%;min-height:4.5%" tooltip="Clear the texture cache.." @onclick=@(() => Render.TextureCache.clearTexture())><i>remove_circle</i> Clear Texture Cache ( Local ) </Button>
+									<Button style="left:10px;width:45%;min-height:4.5%" tooltip="Clear the WAD cache.." @onclick=@(() => GoldSrc.TextureCache.clearWAD())><i>remove_circle</i> Clear WAD Cache ( Local ) </Button>
+								</div>
+							</div>
+						</div>
+					</div>
+					<div style="display:none;" class="tab_4" @ref="tab_4_2">
+						<div style="width:100%;height:100%">
+							<ModelList @ref="modellist"></ModelList>
+							<Button style="width:80%;" tooltip="Clear Model cache.." @onclick=@(() => MapParser.GoldSrc.Entities.ModelRenderer.clearModelCache())><i>remove_circle</i> Clear Models Cache ( Local ) </Button>
+						</div>
+						<div style="width:100%;height:100%">
+							<ModelViewer @ref="modelviewer"></ModelViewer>
+						</div>
+					</div>
+					<div style="display:none;" class="tab_4_3" @ref="tab_4_3">
+						<div style="width:100%;height:7%;">
+							<Button style="width:80%;" tooltip="Clear Mirrors cache.." @onclick=@(() => clearMirrorsFileCache())><i>remove_circle</i> Clear Mirror's File Cache ( Local ) </Button>
+						</div>
+						<div style="width:100%;height:7%;">
+							<Button style="width:80%;" tooltip="Clear all download files from the mirrors.." @onclick=@(() => clearAllDownloadFiles())><i>remove_circle</i> Clear All Download Files ( Local ) </Button>
+						</div>
+						<div style="flex-direction:row;width:100%;height:7%;">
+							Pixelation;
+							<Button style="left:10px;" class="@(!Manager.clientSettings.pixelation)" tooltip="Use filtered textures" @onclick=@(() => {Manager.clientSettings.pixelation = false;Manager.saveSettings();})><i>settings_suggest</i> Disabled </Button>
+							<Button style="left:10px;" class="@(Manager.clientSettings.pixelation)"  tooltip="Use Half-Life style point filteration, like an old engine" @onclick=@(() => {Manager.clientSettings.pixelation = true;Manager.saveSettings();})><i>settings_suggest</i> Enabled </Button>
+						</div>
+					</div>
 				</div>
-				<div style="height:1%;margin:10px;">Selected Texture's WAD: @selectedWAD</div>
-				<div style="height:1%;margin:10px;top:-1%">Cached Texture: @Render.TextureCache.textureData.Count()   Cached WAD: @GoldSrc.TextureCache.WADCache.Count()</div>
-				<Button style="left:10px;width:30%;" tooltip="Clear the texture cache.." @onclick=@(() => Render.TextureCache.clearTexture())><i>remove_circle</i> Clear Texture Cache ( Local ) </Button>
-				<Button style="left:10px;width:30%;" tooltip="Clear the WAD cache.." @onclick=@(() => GoldSrc.TextureCache.clearWAD())><i>remove_circle</i> Clear WAD Cache ( Local ) </Button>
-				<Button style="left:10px;width:30%;" tooltip="Clear Mirrors cache.." @onclick=@(() => clearMirrorsFileCache())><i>remove_circle</i> Clear Mirror's File Cache ( Local ) </Button>
-				<Button style="left:10px;width:30%;" tooltip="Clear all download files from the mirrors.." @onclick=@(() => clearAllDownloadFiles())><i>remove_circle</i> Clear All Download Files ( Local ) </Button>
 			</div>
 		</div>
 		<div style="display:none;align-items:center;align-content:center;flex-direction:column;justify-content:center;width:100%" class="tab_5" @ref="tab_5">
@@ -357,10 +413,10 @@
 				<Button class="@(!Manager.clientSettings.clearMaps)" tooltip="Never clear of the maps" @onclick=@(() => {Manager.clientSettings.clearMaps = false;Manager.saveSettings();})><i>settings_suggest</i> Never </Button>
 				<Button class="@(Manager.clientSettings.clearMaps)"  tooltip="Always clear every new map spawning" @onclick=@(() => {Manager.clientSettings.clearMaps = true;Manager.saveSettings();})><i>settings_suggest</i> Every New Spawn </Button>
 			</div>
-			<div style="margin-top:15px">Pixelation;</div>
+			<div style="margin-top:15px">Spawn Models (Experimental);</div>
 			<div style="width:100%;justify-content:center;">
-				<Button class="@(!Manager.clientSettings.pixelation)" tooltip="Use filtered textures" @onclick=@(() => {Manager.clientSettings.pixelation = false;Manager.saveSettings();})><i>settings_suggest</i> Disabled </Button>
-				<Button class="@(Manager.clientSettings.pixelation)"  tooltip="Use Half-Life style point filteration, like an old engine" @onclick=@(() => {Manager.clientSettings.pixelation = true;Manager.saveSettings();})><i>settings_suggest</i> Enabled </Button>
+				<Button class="@(!Manager.clientSettings.spawnModels)" tooltip="Never spawn models of the maps" @onclick=@(() => {Manager.clientSettings.spawnModels = false;Manager.saveSettings();})><i>settings_suggest</i> Never </Button>
+				<Button class="@(Manager.clientSettings.spawnModels)"  tooltip="Always spawn models of the maps" @onclick=@(() => {Manager.clientSettings.spawnModels = true;Manager.saveSettings();})><i>settings_suggest</i> Always </Button>
 			</div>
 		</div>
 		<div style="display:none;" class="tab_6" @ref="tab_6">
@@ -368,7 +424,12 @@
 			
 			<div style="justify-content:center;align-content:center;align-items:center;align-self:center;width:100%;height:100%;flex-direction:column;font-family:Tahoma;">
 				<div style="font-color:white;font-size:40px;text-shadow:0 0 3px rgba(1,1,1,1);margin-bottom:15px;">s&box Community</div>
-				<WebPanel style="width:90%;height:60%;" @ref="webpanel"></WebPanel>
+				<WebPanel style="width:90%;height:60%;" @ref="webpanel">
+					@if(webpanel == null || webpanel.surfaceTexture == null || webpanel.surfaceTexture.Width == 1)
+					{
+						<div style="justify-content:center;align-content:center;align-items:center;align-self:center;width:100%;height:100%;flex-direction:column;font-family:Tahoma;font-color:white;">Loading..</div>
+					}
+				</WebPanel>
 				<!--<div style="font-size:20px;">Visit to sbox.community</div>-->
 				<div style="height:5%;"></div>
 				<div style="font-size:16px;">GitHub</div>
@@ -389,13 +450,19 @@
 	public MapList maplist { get; set; }
 	public Panel canvas { get; set; }
 	public TextureList texturelist { get; set; }
+	public ModelViewer modelviewer { get; set; }
 	public ActiveMapList activemaplist { get; set; }
 	public ExternalMirrorList externalMirrorList { get; set; }
 	public ExternalMapList externalMapList { get; set; }
+	public ModelList modellist { get; set; }
 	public Panel tab_1 { get; set; }
 	public Panel tab_2 { get; set; }
 	public Panel tab_3 { get; set; }
 	public Panel tab_4 { get; set; }
+	public Panel tab_4_0 { get; set; }
+	public Panel tab_4_1 { get; set; }
+	public Panel tab_4_2 { get; set; }
+	public Panel tab_4_3 { get; set; }
 	public Panel tab_5 { get; set; }
 	public Panel tab_6 { get; set; }
 	public string selectedWAD = "None";
@@ -478,16 +545,18 @@
 		if (!string.IsNullOrEmpty(wadlist))
 			wadlist = Convert.ToBase64String(Util.Compress<string>(wadlist));
 
-		Manager.adminConCommandHandler(0, activePackage.FullIdent, Util.PathToMapName(maplist.selectedPackage?.bsp), spawnPos: Manager.clientSettings.spawnPos, clearMaps: Manager.clientSettings.clearMaps, wadlist: wadlist);
+		Manager.adminConCommandHandler(0, activePackage.FullIdent, Util.PathToMapName(maplist.selectedPackage?.bsp), spawnPos: Manager.clientSettings.spawnPos, clearMaps: Manager.clientSettings.clearMaps, wadlist: wadlist, spawnModels: Manager.clientSettings.spawnModels);
 		Notify.Create($"Starting to spawn, please wait ( {Util.PathToMapName(maplist.selectedPackage?.bsp)} )", Notify.NotifyType.Info);
+		PreparingIndicator.Update("Starting", 10f);
 	}
 	async void spawnMapUrl( string baseurl, string mapname, string wadlist )
 	{
 		if (!string.IsNullOrEmpty(wadlist))
 			wadlist = Convert.ToBase64String(Util.Compress<string>(wadlist));
 
-		Manager.adminConCommandHandler(3, mapName: mapname, baseUrl: baseurl, wadlist: wadlist, savefolder: "goldsrc", spawnPos: Manager.clientSettings.spawnPos, clearMaps: Manager.clientSettings.clearMaps);
+		Manager.adminConCommandHandler(3, mapName: mapname, baseUrl: baseurl, wadlist: wadlist, savefolder: "goldsrc", spawnPos: Manager.clientSettings.spawnPos, clearMaps: Manager.clientSettings.clearMaps, spawnModels: Manager.clientSettings.spawnModels);
 		Notify.Create($"Starting to spawn, please wait ( {mapname} - {baseurl})", Notify.NotifyType.Info);
+		PreparingIndicator.Update("Starting", 10f);
 	}
 	void addonList()
 	{

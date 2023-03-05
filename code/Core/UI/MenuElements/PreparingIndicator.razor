@@ -1,3 +1,5 @@
+<!-- sbox.Community © 2023-2024 -->
+
 @using System;
 @using Sandbox;
 @using Sandbox.UI;
@@ -46,13 +48,15 @@
 	}
 </style>
 
-<div class="info"><i class="icon">replay</i>Progressing</div> <!--(".".PadRight((int)Time.Tick/2 % 3,'.'))-->
+<div class="info"><i class="icon">replay</i> <span style="font-color:@(infoColor.Hex);padding-right:3px;text-shadow: 0 0 2px #000000;"> @(info) </span> Progressing</div> <!--(".".PadRight((int)Time.Tick/2 % 3,'.'))-->
 
 @code
 {
 	private static PreparingIndicator instance;
 
 	float timeLeft = Time.Now + 1f;
+	string info = "";
+	Color infoColor = Color.White;
 	static float svCooldown = 0f;
 
 	public override void Tick()
@@ -73,7 +77,7 @@
 		return HashCode.Combine(Time.Tick);
 	}
 
-	public static void Update(float timeleft = 1f)
+	public static void Update(string info = "", float timeleft = 1f)
 	{
 		if ( Game.IsServer ) // TODO: find out where they coming from for only clientside operations
 		{
@@ -93,5 +97,11 @@
 		}
 
 		instance.timeLeft = Time.Now + timeleft;
+
+		if ( !string.IsNullOrEmpty( info ) ) {
+
+			instance.info = info;
+			instance.infoColor = Util.StringToColor(info);
+		}
 	}
 }

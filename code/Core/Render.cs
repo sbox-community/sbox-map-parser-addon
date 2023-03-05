@@ -1,4 +1,6 @@
-﻿using Sandbox;
+﻿// sbox.Community © 2023-2024
+
+using Sandbox;
 using System.Collections.Generic;
 
 namespace MapParser

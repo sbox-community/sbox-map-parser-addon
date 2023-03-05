@@ -1,3 +1,5 @@
+<!-- sbox.Community © 2023-2024 -->
+
 @using System;
 @using Sandbox;
 @using Sandbox.UI;
@@ -104,7 +106,7 @@
 		return HashCode.Combine(note);
 	}
 
-	public static DownloadNotification? CreateInfo(string info, float timeleft = 60f)
+	public static DownloadNotification? CreateInfo(string info, float timeleft = 300f)
 	{
 		if(Game.IsServer)
 		{

@@ -1,4 +1,6 @@
-﻿using Sandbox;
+﻿// sbox.Community © 2023-2024
+
+using Sandbox;
 using Sandbox.UI;
 using System;
 

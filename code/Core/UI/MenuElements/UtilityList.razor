@@ -1,0 +1,174 @@
+<!-- sbox.Community © 2023-2024 -->
+
+@using System;
+@using System.Globalization;
+@using System.Text;
+@using Sandbox;
+@using Sandbox.Internal;
+@using Sandbox.UI;
+@using Sandbox.Diagnostics;
+@using System.Collections.Generic;
+@using System.Linq;
+@using System.Threading.Tasks;
+@using System.Text.RegularExpressions;
+
+
+@namespace MapParser
+@inherits Panel
+
+<style>
+	
+	UtilityList {
+	width:20%;
+	min-width:20%;
+	height: 95%;
+	border-radius: 2px;
+    flex-direction: column;
+    flex-wrap: nowrap;
+	margin:10px;
+	box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
+
+	.rowHeader{
+		background: linear-gradient(to top, #ffe259, #ffa751);
+		width:100%;
+		height: 5%;
+		max-height:5%;
+		flex-direction:row;
+
+		.rowHeader_item{
+			width:100%;
+			height:100%;
+			justify-content:center;
+			border-bottom-width:1px;
+			border-left-width:1px;
+			border-color:black;
+			&:nth-child(1) {
+				border-left-width: 0px;
+			}
+		}
+	}
+	.row{
+		overflow:scroll;
+		background-color:#afafaf;
+		width:100%;
+		height: 100%;
+		flex-direction:column;
+		
+		.rowItemInfo{
+			width:100%;
+			height:8%;
+			max-height: 8%;
+			justify-content:center;
+			border-bottom-width:1px;
+			border-color:black;
+			font-size:15px;
+			padding: 5px 0 0 0;
+			background: linear-gradient(to bottom, #B9B9B9, #999999, #B9B9B9) text-shadow: 0 0 1px rgba(1,1,1,0.2);
+
+			&.True
+			{
+				background: linear-gradient(to bottom, #ff6a6a, #ff1f1f);
+				&:hover{
+					background: none;
+					background-color: #fd4646;
+				}
+			}
+			&.False
+			{
+				background: linear-gradient(to bottom, #898989, #a4a4a4);
+				&:hover{
+					background: none;
+					background-color: gray;
+				}
+			}
+		}
+
+		.rowItem{
+			width:100%;
+			height:5%;
+			max-height: 5%;
+			justify-content:center;
+			border-bottom-width:1px;
+			border-color:black;
+
+			&.True
+			{
+				background: linear-gradient(to bottom, #ff6a6a, #ff1f1f);
+				&:hover{
+					background: none;
+					background-color: #fd4646;
+				}
+			}
+			&.False
+			{
+				background: linear-gradient(to bottom, #898989, #a4a4a4);
+				&:hover{
+					background: none;
+					background-color: gray;
+				}
+			}
+		}
+
+	}
+}
+</style>
+
+<div class="rowHeader">
+	<div class="rowHeader_item">Utility List</div>
+</div>
+<div class="row">
+	@foreach (var engine in menuList) {
+		<div class="rowItemInfo">@engine.Key</div>
+		@foreach (var menu in engine.Value) {
+			<div class="rowItem @(selected == @menu )" @onclick=@(async () => await selectRow(@menu))>@menu</div>
+		}
+	}
+</div>
+
+@code
+{
+
+	public Menu menuInstance { get; set; }
+	public string selected { get; set; }
+
+	public static readonly Dictionary<string, List<string>> menuList = new() {
+		{ "GoldSrc", new() { "Texture Cache", "Model Cache (WIP)", "Other" } },
+		{ "Source", new() { "WIP" } },
+	};
+
+	public override void Tick()
+	{
+		base.Tick();
+	}
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(selected);
+	}
+	async Task selectRow(string selected)
+	{
+		this.selected = selected;
+		openTab(selected);
+	}
+
+	void openTab(string tab) {
+		closeAllTabs();
+
+		if (tab == menuList["GoldSrc"][0]) {
+			menuInstance.tab_4_1.Style.Display = DisplayMode.Flex;
+		}
+		else if (tab == menuList["GoldSrc"][1]) {
+			menuInstance.tab_4_2.Style.Display = DisplayMode.Flex;
+		}
+		else if (tab == menuList["GoldSrc"][2]) {
+			menuInstance.tab_4_3.Style.Display = DisplayMode.Flex;
+		}
+	}
+	void closeAllTabs() {
+
+		menuInstance.tab_4_0.Style.Display = DisplayMode.None;
+		menuInstance.tab_4_1.Style.Display = DisplayMode.None;
+		menuInstance.tab_4_2.Style.Display = DisplayMode.None;
+		menuInstance.tab_4_3.Style.Display = DisplayMode.None;
+
+	}
+}

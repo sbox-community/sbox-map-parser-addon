@@ -1,4 +1,6 @@
-﻿namespace MapParser.GoldSrc
+﻿// sbox.Community © 2023-2024
+
+namespace MapParser.GoldSrc
 {
 	public static class StaticData
 	{

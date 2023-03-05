@@ -1,3 +1,5 @@
+// sbox.Community © 2023-2024
+
 using Sandbox;
 using System.IO;
 using System.Linq;
@@ -6,7 +8,6 @@ using static MapParser.Manager;
 using static MapParser.Render;
 using System;
 using System.Collections.Generic;
-using static MapParser.GoldSrc.Entity;
 using System.Threading.Tasks;
 
 namespace MapParser.GoldSrc
@@ -16,6 +17,8 @@ namespace MapParser.GoldSrc
 		public static Dictionary<string, Dictionary<string, byte[]>> WADCache = new();
 		
 		private static string previousfilePath = ""; // To prevent notify spamming
+
+		public static Texture transparentTexture;
 		public static void addWAD( string wadname, SpawnParameter settings )
 		{
 			lock ( WADCache ) { 
@@ -94,7 +97,7 @@ namespace MapParser.GoldSrc
 					return datafound.texture;
 				else
 				{
-					PreparingIndicator.Update();
+					PreparingIndicator.Update("Texture");
 					var tex = MIPTEXData.CreateTexture( data, name );
 					Render.TextureCache.textureData.TryAdd( name, new() { name = name, type = TextureCacheType.MIPTEX, WADname = wadname, texture = tex, width = tex.Width, height = tex.Height } );
 
@@ -118,14 +121,14 @@ namespace MapParser.GoldSrc
 					return datafound.texture;
 				else
 				{
-					PreparingIndicator.Update();
+					PreparingIndicator.Update("Texture");
 					var tex = Texture.Create( width, height ).WithData( data ).Finish();
 					Render.TextureCache.textureData.TryAdd( name, new() { name = name, type = TextureCacheType.MIPTEX, WADname = wadname, texture = tex, width = width, height = height } );
 					return tex;
 				}
 			}
 		}
-		public async static Task addTextures( Dictionary<int, string> textureList, SpawnParameter settings, Map map = null, MapEntity mapEntity = null )
+		public async static Task addTextures( Dictionary<int, string> textureList, SpawnParameter settings, Entities.Map.Map_CL map = null, Entities.MapModelEntity mapEntity = null )
 		{
 			// Must be loaded after spawning of map for async
 
@@ -133,7 +136,7 @@ namespace MapParser.GoldSrc
 
 			foreach ( var wad in settings.wadList )
 			{
-				PreparingIndicator.Update();
+				PreparingIndicator.Update("Texture");
 
 				addWAD( wad, settings );
 				foreach( var texturePair in textureList )
@@ -145,7 +148,7 @@ namespace MapParser.GoldSrc
 						{
 							if ( wadtextlisttexture.Key == texture )
 							{
-								PreparingIndicator.Update();
+								PreparingIndicator.Update("Texture");
 
 								var tex = addTextureWithMIPTEXData( wadtextlisttexture.Value, wad );
 
@@ -175,7 +178,7 @@ namespace MapParser.GoldSrc
 					lastTextureErrors.Add( texturePair.Value );
 
 				// If map is removed before updating textures, might be error
-				var mapObject = (map is not null ? Maps.Where( x => x.Value.clside_Map == map ) : Maps.Where( x => x.Value.clside_Map == mapEntity.parent )).FirstOrDefault().Value;
+				var mapObject = (map is not null ? Maps.Where( x => x.Value.Map.CL == map ) : Maps.Where( x => x.Value.Map.CL == mapEntity.parent )).FirstOrDefault().Value;
 				if ( mapObject.textureErrors == null )
 					mapObject.textureErrors = new();
 
@@ -222,12 +225,12 @@ namespace MapParser.GoldSrc
 					return (null, 0, 0, 0);
 				}
 
-				if( palOffs > reader.BaseStream.Length ) // Why is happens, idk
+				if( palOffs > reader.BaseStream.Length || palOffs < 0 ) // Why is happens, idk
 				{
-					Notify.Create( "Palette offset is beyond the data length", Notify.NotifyType.Error );
+					Notify.Create( "Palette offset is beyond/before the data length", Notify.NotifyType.Error );
 					return (null, 0, 0, 0);
 				}
-
+				
 				stream.Seek( palOffs + 0x00, SeekOrigin.Begin );
 				var palSize = reader.ReadUInt16();
 				if ( palSize != 0x100 )
@@ -306,7 +309,7 @@ namespace MapParser.GoldSrc
 
 		public static Texture createLightmap( ref BSPFile.LightmapPackerPage lightmapPackerPage, ref List<BSPFile.SurfaceLightmapData> lightmap, string mapName)
 		{
-			PreparingIndicator.Update();
+			PreparingIndicator.Update("Lightmap");
 
 			var numPixels = lightmapPackerPage.width * lightmapPackerPage.height;
 			byte[] dst = new byte[numPixels * 4];
@@ -336,7 +339,11 @@ namespace MapParser.GoldSrc
 			if ( !dst.Any( x => x != 0 ) ) // If lightmap is completely black, becase of building of lightmap on the map compilation?
 			{
 				Notify.Create( "Lightmap is disabled", Notify.NotifyType.Error );
-				return Texture.Transparent;
+
+				if ( TextureCache.transparentTexture == null )
+					TextureCache.transparentTexture = Texture.Create( 1, 1 ).WithData( new byte[4] { 0xFF, 0xFF, 0xFF, 0xFF } ).Finish();
+
+				return TextureCache.transparentTexture;
 			}
 
 			var texture = Texture.Create( lightmapPackerPage.width, lightmapPackerPage.height ).WithData( dst ).Finish();
@@ -347,7 +354,7 @@ namespace MapParser.GoldSrc
 		}
 		public static string GetMipTexName( byte[] buffer )
 		{
-			return Util.ReadString( buffer, 0x00, 0x10, true );
+			return Util.ReadString( ref buffer, 0x00, 0x10, true );
 		}
 	}
 }
