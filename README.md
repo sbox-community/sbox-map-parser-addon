@@ -20,7 +20,7 @@ Possible updates;
 - Functionality of some entities ( like ambient sounds, buttons, doors or lights )
 - Frustum and backface culling
 - Demo player ( for goldsrc )
-- Model and Particle parser ( for goldsrc )
+- Particle parser ( for goldsrc )
 - Another game map parsers ( maybe source engine? )
 
 ___
