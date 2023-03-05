@@ -5,7 +5,6 @@ For now, only supported to GoldSrc. There are ~17k map you can spawn and play th
 
 ![11](https://user-images.githubusercontent.com/48884110/212428265-cf7c902b-eb8e-41bf-9e13-e2ca85624ad2.png)
 ![22](https://user-images.githubusercontent.com/48884110/212428295-a7270f2a-004c-4646-9405-5c65943157f8.png)
-![33](https://user-images.githubusercontent.com/48884110/212428304-21b57477-164a-4311-997d-de318f038c05.png)
 
 ![hh](https://user-images.githubusercontent.com/48884110/219905268-1642e9ef-374d-4c0f-b445-ad54bdbd8d9f.png)
 ![222](https://user-images.githubusercontent.com/48884110/219905269-87aef5d9-aa49-4085-8276-1a9e8387c3bc.png)
