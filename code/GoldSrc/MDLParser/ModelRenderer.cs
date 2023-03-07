@@ -18,7 +18,13 @@ namespace MapParser.GoldSrc.Entities
 	{
 		public static Dictionary<string, (List<(BufferAttribute<float>[][], BufferAttribute<float>, Texture, List<float[]>)>, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MDLEntity)> ModelCache = new();
 
-		public static void clearModelCache() => ModelCache.Clear();
+		public static void clearModelCache()
+		{
+			foreach(var model in ModelCache)
+				if ( model.Value.Item4 != null && model.Value.Item4.CL != null && model.Value.Item4.CL.IsValid() )
+					model.Value.Item4.Delete();
+			ModelCache.Clear();
+		}
 
 		public struct BufferAttribute<T>
 		{

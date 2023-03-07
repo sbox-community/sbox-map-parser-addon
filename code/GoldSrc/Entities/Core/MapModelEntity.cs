@@ -22,6 +22,15 @@ namespace MapParser.GoldSrc.Entities
 
 		public MapModelEntity( SpawnParameter settings, Texture lightmap, Map.Map_CL parent, EntityParser.EntityData entity, List<(List<Vertex>, List<int>, string, int)> meshInfo, Vector3 Mins, Vector3 Maxs, Vector3 vOrigin ) : base( settings.sceneWorld )
 		{
+			Flags.IsOpaque = true;
+			Flags.IsTranslucent = false;
+			Flags.IsDecal = false;
+			Flags.OverlayLayer = false;
+			Flags.BloomLayer = false;
+			Flags.ViewModelLayer = false;
+			Flags.SkyBoxLayer = false;
+			Flags.NeedsLightProbe = true;
+
 			this.lightmap = lightmap;
 			this.entity = entity;
 			this.parent = parent;
@@ -41,6 +50,9 @@ namespace MapParser.GoldSrc.Entities
 			if ( entity.data.TryGetValue( "renderamt", out var renderamt ) )
 				opacity = int.Parse( renderamt ) / 255f;
 
+			if ( opacity < 1f )
+				Flags.IsTranslucent = true;
+
 			// TODO: Add RenderColor, should we get mins and maxs from entData?
 
 			// Mins and Maxs were coming from Lump.Models, but I guess there is a problem. For now, mins and maxs finding manually with on the vertices
@@ -56,7 +68,7 @@ namespace MapParser.GoldSrc.Entities
 
 			foreach ( var mesh in meshInfo )
 			{
-				PreparingIndicator.Update("Static Models");
+				PreparingIndicator.Update( "Static Models" );
 
 				VertexBuffer buffer = new();
 				buffer.Init( true );
@@ -115,9 +127,12 @@ namespace MapParser.GoldSrc.Entities
 		}
 		public async void createTextures( Dictionary<int, string> texturesNeedLoaded, SpawnParameter settings, MapModelEntity mapEntity ) => await GameTask.RunInThreadAsync( () => TextureCache.addTextures( texturesNeedLoaded, settings, mapEntity: mapEntity ) );
 
-		public void Render()
+		public override void RenderSceneObject()
 		{
 			if ( !render )
+				return;
+
+			if ( Graphics.LayerType != SceneLayerType.Opaque && Graphics.LayerType != SceneLayerType.Translucent )
 				return;
 
 			Graphics.Attributes.Set( "TextureLightmap", lightmap );
@@ -129,12 +144,15 @@ namespace MapParser.GoldSrc.Entities
 				Graphics.Attributes.Set( "TextureDiffuse", vertices.Item2 );
 				vertices.Item1.Draw( renderMat );
 			}
+
+			base.RenderSceneObject();
+
 			//DebugOverlay.Text( $"{entity.classname}",Position , 0f );
 			//DebugOverlay.Box( Bounds.Mins, Bounds.Maxs, Color.Red );
 		}
 		public void updateTexture( int key, Texture newTex )
 		{
-			PreparingIndicator.Update("Texture");
+			PreparingIndicator.Update( "Texture" );
 
 			for ( var i = 0; i < vertexBuffer.Count(); i++ )
 			{

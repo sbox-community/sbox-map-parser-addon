@@ -86,7 +86,7 @@
 
 		if (Manager.mainMenu != null && (Manager.mainMenu as Menu) != null && (Manager.mainMenu as Menu).modellist != null && (Manager.mainMenu as Menu).modellist.mv == null)
 			(Manager.mainMenu as Menu).modellist.mv = this;
-	}
+		}
 
 	~ModelViewer() {
 		if (world != null) {
@@ -114,9 +114,6 @@
 		base.Tick();
 		if (Model == null)
 			return;
-
-		// Need rendered from ScenePanel DrawContent
-		Model.Render();
 
 		float closeToFace = fieldOfView.LerpInverse(30, 2);
 		var eyes = Vector3.Up * 65;

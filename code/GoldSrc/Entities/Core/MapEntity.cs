@@ -503,14 +503,6 @@ namespace MapParser.GoldSrc.Entities
 					vertices.Item1.Draw( renderMat );
 				}
 
-				// Rendering Entities
-				foreach ( var ent in entities )
-					ent.Render();
-
-				// Rendering Models
-				foreach ( var model in models )
-					model.CL.Render();
-
 				/*for ( var i = 0; i < leavesCount; i++ )
 				{
 					var leaf = leaves[i];

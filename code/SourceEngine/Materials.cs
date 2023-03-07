@@ -3,15 +3,10 @@
 using Sandbox;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
-using System.Reflection.Metadata;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static MapParser.GoldSrc.BSPFile;
 using static MapParser.SourceEngine.BSPFile;
 using static MapParser.SourceEngine.Main;
 using static MapParser.SourceEngine.Materials;

@@ -31,10 +31,10 @@ namespace MapParser.GoldSrc.Entities
 		// Not good approach, temporary
 		public static bool TryLink( MDLEntity_CL self )
 		{
-			foreach (var ent in MDLEntity_SV.All)
-				if( ent is MDLEntity_SV && ent.Position.Distance(self.Position) < 1e01 )
+			foreach ( var ent in Entity.All.OfType<MDLEntity_SV>() )
+				if ( ent.Position.Distance( self.Position ) < 1e01 )
 				{
-					self.parent = (MDLEntity_SV) ent;
+					self.parent = ent;
 					self.linked = true;
 				}
 			return false;
@@ -71,6 +71,15 @@ namespace MapParser.GoldSrc.Entities
 
 			public MDLEntity_CL( ref List<(BufferAttribute<float>[][], BufferAttribute<float>, Sandbox.Texture, List<float[]>)> subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities ) : base( settings.sceneWorld )
 			{
+				Flags.IsOpaque = true;
+				Flags.IsTranslucent = false;
+				Flags.IsDecal = false;
+				Flags.OverlayLayer = false;
+				Flags.BloomLayer = false;
+				Flags.ViewModelLayer = false;
+				Flags.SkyBoxLayer = false;
+				Flags.NeedsLightProbe = true;
+
 				var origin = Vector3.Parse( entData.data["origin"] );
 				Position = settings.position + origin;
 
@@ -86,6 +95,9 @@ namespace MapParser.GoldSrc.Entities
 
 				if ( entData.data.TryGetValue( "renderamt", out var renderamt ) )
 					opacity = int.Parse( renderamt ) / 255f;
+
+				if ( opacity < 1f )
+					Flags.IsTranslucent = true;
 
 				EntityParser.EntityData? closestLight = null;
 				float closestLightDistance = 0f;
@@ -276,12 +288,12 @@ namespace MapParser.GoldSrc.Entities
 				return mb.AddMeshes( meshList.ToArray() ).Create();
 			}*/
 
-			public void Render()
+			public override void RenderSceneObject()
 			{
 				if ( !render )
 					return;
 
-				if ( Graphics.LayerType != SceneLayerType.Opaque )
+				if ( Graphics.LayerType != SceneLayerType.Opaque && Graphics.LayerType != SceneLayerType.Translucent )
 					return;
 
 				// Might be identified as will not be linked for only clside entities
@@ -332,7 +344,10 @@ namespace MapParser.GoldSrc.Entities
 						}
 					}
 				}
+				base.RenderSceneObject();
 			}
+
+
 		}
 
 		public class MDLEntity_SV : ModelEntity //KeyframeEntity
