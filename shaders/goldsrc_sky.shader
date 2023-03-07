@@ -1,3 +1,5 @@
+// sbox.Community © 2023-2024
+
 //=========================================================================================================================
 // Optional
 //=========================================================================================================================
@@ -65,7 +67,6 @@ VS
 
 		o.vPositionPs.xyzw = Position3WsToPs(vPositionWs.xyz);
 
-
 		return o;
 	}
 }
@@ -75,7 +76,6 @@ VS
 
 PS
 { 
-	#include "common/pixel.hlsl"
 	CreateTexture2D(u_TextureDiffuse) < Attribute("g_vSkyTexture"); SrgbRead(true); Filter(MIN_MAG_LINEAR_MIP_POINT); AddressU(CLAMP); AddressV(CLAMP); > ;
 
 	float4 MainPs(PixelInput i) : SV_Target0
@@ -83,12 +83,6 @@ PS
 		float2 t_TexCoordDiffuse = i.vTextureCoords.xy;
 		float4 t_DiffuseSample = Tex2D(u_TextureDiffuse, t_TexCoordDiffuse.xy);
 
-		//ShadingModelValveStandard sm;
-		Material m = GatherMaterial(i);
-		float4 o = FinalizePixelMaterial(i, m); //, sm
-
-		o.rgba = t_DiffuseSample;
-
-		return o;
+		return t_DiffuseSample;
 	}
 }

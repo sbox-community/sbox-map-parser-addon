@@ -377,11 +377,11 @@
 						</div>
 					</div>
 					<div style="display:none;" class="tab_4" @ref="tab_4_2">
-						<div style="width:25%;height:100%;flex-direction:column;">
+						<div style="width:20%;height:100%;flex-direction:column;">
 							<ModelList style="height:30%;" @ref="modellist"></ModelList>
-							<Button style="width:20%;" tooltip="Clear Model cache.." @onclick=@(() => MapParser.GoldSrc.Entities.ModelRenderer.clearModelCache())><i>remove_circle</i> Clear Models Cache ( Local ) </Button>
+							<Button style="width:100%;" tooltip="Clear Model cache.." @onclick=@(() => MapParser.GoldSrc.Entities.ModelRenderer.clearModelCache())><i>remove_circle</i> Clear Models Cache ( Local ) </Button>
 						</div>
-						<div style="width:75%;height:100%">
+						<div style="width:80%;height:100%">
 							<ModelViewer @ref="modelviewer"></ModelViewer>
 						</div>
 					</div>

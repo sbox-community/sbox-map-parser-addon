@@ -27,15 +27,16 @@
 	CameraMode CameraController;
 	//SceneModel Model;
 	MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL Model;
-	SceneLight lightA;
+	/*SceneLight lightA;
 	SceneLight lightB;
 	SceneLight lightC;
-	SceneLight lightD;
+	SceneLight lightD;*/
 
 	Vector3 camPos;
 	Angles camAngles;
 	float fieldOfView = 90.0f;
 	float targetDistance = 25;
+	public bool rightMouse = false;
 
 	public ModelViewer() {
 		world = new SceneWorld();
@@ -55,12 +56,12 @@
 		var LightWarm3 = new SceneSpotLight(world, new Vector3(100, 50, 20), new Color(1.0f, 0.95f, 0.8f) * 5.0f);
 		LightWarm3.Rotation = Rotation.LookAt(-LightWarm3.Position);
 		var LightWarm4 = new SceneSpotLight(world, new Vector3(100, -50, 20), new Color(1.0f, 0.95f, 0.8f) * 5.0f);
-		LightWarm4.Rotation = Rotation.LookAt(-LightWarm4.Position);*/
+		LightWarm4.Rotation = Rotation.LookAt(-LightWarm4.Position);
 
 		lightA = new SceneLight(world, new Vector3(100, 0, 100), 500, new Color(1.0f, 0.9f, 0.7f).Lighten(2));
 		lightB = new SceneLight(world, new Vector3(-100, 0, 100), 500, new Color(1.0f, 0.9f, 0.7f).Lighten(2));
 		lightC = new SceneLight(world, new Vector3(0, 100, 100), 500, new Color(1.0f, 0.9f, 0.7f).Lighten(2));
-		lightD = new SceneLight(world, new Vector3(0, -100, 100), 500, new Color(1.0f, 0.9f, 0.7f).Lighten(2));
+		lightD = new SceneLight(world, new Vector3(0, -100, 100), 500, new Color(1.0f, 0.9f, 0.7f).Lighten(2));*/
 
 		Style.FlexWrap = Wrap.Wrap;
 		Style.JustifyContent = Justify.Center;
@@ -77,7 +78,6 @@
 		scenePanel.Camera.ZNear = 5;
 		scenePanel.Camera.AmbientLightColor = Color.Gray * 0.01f;
 
-		//SetModel("models/citizen/citizen.vmdl");
 		scenePanel.Camera.Name = "Model Viewer";
 
 		scenePanel.AddEventListener("onclose", () => {
@@ -86,7 +86,7 @@
 
 		if (Manager.mainMenu != null && (Manager.mainMenu as Menu) != null && (Manager.mainMenu as Menu).modellist != null && (Manager.mainMenu as Menu).modellist.mv == null)
 			(Manager.mainMenu as Menu).modellist.mv = this;
-		}
+	}
 
 	~ModelViewer() {
 		if (world != null) {
@@ -109,6 +109,10 @@
 		targetDistance = targetDistance.Clamp(1, 100);
 	}
 
+	protected override void OnMouseDown(MousePanelEvent e) {
+		base.OnMouseDown(e);
+		rightMouse = e.MouseButton == MouseButtons.Right;
+	}
 	public override void Tick() {
 
 		base.Tick();
@@ -127,7 +131,6 @@
 
 		CameraController?.Update(this);
 		fieldOfView = fieldOfView.LerpTo(targetDistance, Time.Delta * 10f, true);
-
 
 	}
 	protected override int BuildHash() {
@@ -155,8 +158,9 @@
 	public void SetModel(ref string key, ref (List<(MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>[][], MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>, Texture, List<float[]>)>, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data) {
 
 		if (Model != null) {
-			Model.Delete();
-			Model = null;
+			/*Model.Delete();
+			Model = null;*/
+			Model.render = false;
 		}
 
 		var model = data.Item4;
@@ -167,16 +171,20 @@
 
 			var entData = data.Item2;
 			entData.data["origin"] = "0,0,0";
+			entData.data["renderamt"] = "255";
 
-			model = MapParser.GoldSrc.Entities.MDLEntity.Create(ref data.Item1, ref entData, ref settings, ref data.Item3);
+			List<GoldSrc.EntityParser.EntityData> closestLights = new(); //data.Item3; for now, disabled
+
+			model = MapParser.GoldSrc.Entities.MDLEntity.Create(ref data.Item1, ref entData, ref settings, ref closestLights);
 			data.Item4 = model;
 			MapParser.GoldSrc.Entities.ModelRenderer.ModelCache[key] = data;
+			model.CL.render = true;
+			Model = model.CL;
 		}
-		model.CL.render = true;
-		Model = model.CL;
-
-		/*Model = new SceneModel(world, model.CL.createModelForMV(), Transform.Zero);
-		Model.Update(0.1f);*/
+		else {
+			model.CL.render = true;
+			Model = model.CL;
+		}
 	}
 
 	private class Orbit : CameraMode {
@@ -184,6 +192,7 @@
 		public Vector3 Offset;
 		public Angles Angles;
 		public float Distance;
+		private Vector3 UserOffset;
 
 		public Vector2 PitchLimit = new Vector2(-90, 90);
 		public Vector2 YawLimit = new Vector2(-360, 360);
@@ -196,24 +205,31 @@
 			HomeAngles = Rotation.LookAt(normal.Normal).Angles();
 			Angles = HomeAngles;
 			Distance = distance;
+			UserOffset = Vector3.Zero;
 		}
 
 		public override void Update(ModelViewer mv) {
-			if (mv.HasActive) {
+			if (mv.HasActive)
+			{
 				var move = Mouse.Delta;
 
-				SpinVelocity.x = move.y * -1.0f;
-				SpinVelocity.y = move.x * 3.0f;
+				if (mv.rightMouse)
+					UserOffset += new Vector3(0, 0, move.y);//MathF.Sin(mv.scenePanel.Camera.Rotation.Angles().pitch) * move.x, MathF.Sin(mv.scenePanel.Camera.Rotation.Angles().pitch) * move.x
+				else
+				{
+					SpinVelocity.x = move.y * -1.0f;
+					SpinVelocity.y = move.x * 3.0f;
 
-				Angles.pitch += SpinVelocity.x * 0.1f;
-				Angles.yaw += SpinVelocity.y * 0.1f;
+					Angles.pitch += SpinVelocity.x * 0.1f;
+					Angles.yaw += SpinVelocity.y * 0.1f;
+				}
 			}
-			else {
+			else
+			{
 				SpinVelocity = SpinVelocity.LerpTo(0, Time.Delta * 2.0f);
 				Angles.pitch += SpinVelocity.x * Time.Delta;
 				Angles.yaw += SpinVelocity.y * Time.Delta;
 			}
-
 
 			Angles.roll = 0;
 
@@ -222,9 +238,8 @@
 			Angles.pitch = Angles.pitch.Clamp(PitchLimit.x, PitchLimit.y);
 			Angles.yaw = Angles.yaw.Clamp(YawLimit.x, YawLimit.y);
 
-
 			mv.scenePanel.Camera.Rotation = Rotation.From(Angles);
-			mv.scenePanel.Camera.Position = Center + (mv.scenePanel.Camera.Rotation.Backward * Distance) + Offset;
+			mv.scenePanel.Camera.Position = Center + (mv.scenePanel.Camera.Rotation.Backward * Distance) + Offset + UserOffset;
 		}
 	}
 }
