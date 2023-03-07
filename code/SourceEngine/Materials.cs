@@ -1,11 +1,13 @@
 ﻿// sbox.Community © 2023-2024
 
+using Sandbox;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -19,7 +21,7 @@ namespace MapParser.SourceEngine
 {
 	public static class Materials
 	{
-
+		const float DEG_TO_RAD = 0.017453292519943295f; // Math.PI / 180,
 
 
 		private static Color scratchColor = new Color( 255, 255, 255, 255 );
@@ -1439,13 +1441,16 @@ namespace MapParser.SourceEngine
 			}
 		}
 
-		/*public interface MaterialProxyFactory
+		public class MaterialProxyFactory // Verify
 		{
-			string type { get; }
-			MaterialProxy Create( VKFParamMap parameters );
+			public string type { get; set; }
+			public MaterialProxy Create ( VKFParamMap param )
+			{
+				return new();
+			}
 		}
 
-
+/*
 	public class MaterialProxySystem
 	{
 		public Dictionary<string, MaterialProxyFactory> proxyFactories = new Dictionary<string, MaterialProxyFactory>();
@@ -1455,10 +1460,10 @@ namespace MapParser.SourceEngine
 			RegisterDefaultProxyFactories();
 		}
 
-		private void RegisterDefaultProxyFactories()
-		{
-			RegisterProxyFactory( new MaterialProxy_Equals(null) );
-			RegisterProxyFactory( new MaterialProxy_Add() );
+		private void RegisterDefaultProxyFactories() // Verify
+			{
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_Equals ).ToString() } ); // new MaterialProxy_Equals( null )
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_Add ).ToString() } );//MaterialProxy_Add()
 			RegisterProxyFactory( new MaterialProxy_Subtract() );
 			RegisterProxyFactory( new MaterialProxy_Multiply() );
 			RegisterProxyFactory( new MaterialProxy_Clamp() );
@@ -1506,7 +1511,7 @@ namespace MapParser.SourceEngine
 
 
 
-		class MaterialProxyDriver
+	class MaterialProxyDriver
 	{
 		private BaseMaterial material;
 		private List<MaterialProxy> proxies;
@@ -1573,7 +1578,7 @@ namespace MapParser.SourceEngine
 
 		public class MaterialProxy
 	{
-			public virtual void Update( ParameterMap paramsMap, Main.SourceRenderContext renderContext, EntityMaterialParameters entityParams ) {}
+			public virtual void Update( ParameterMap paramsMap, Main.SourceRenderContext renderContext, EntityMaterialParameters entityParams = null ) {}
 	}
 
 	class MaterialProxy_Equals : MaterialProxy
@@ -1595,6 +1600,551 @@ namespace MapParser.SourceEngine
 			resultvar.Set( srcvar1 );
 		}
 	}
+		class MaterialProxy_Add : MaterialProxy
+		{
+			public static readonly string Type = "add";
+
+			private ParameterReference srcvar1;
+			private ParameterReference srcvar2;
+			private ParameterReference resultvar;
+
+			public MaterialProxy_Add( VKFParamMap parameters )// : base( parameters )
+			{
+				srcvar1 = new ParameterReference( parameters.val["srcvar1"] );
+				srcvar2 = new ParameterReference( parameters.val["srcvar2"] );
+				resultvar = new ParameterReference( parameters.val["resultvar"] );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext context, EntityMaterialParameters entityParams = null )
+			{
+				ParamSetNum( map, resultvar, ParamGetNum( map, srcvar1 ) + ParamGetNum( map, srcvar2 ) );
+			}
+		}
+
+		public class MaterialProxy_Subtract : MaterialProxy
+		{
+			public static string type = "subtract";
+
+			private ParameterReference srcvar1;
+			private ParameterReference srcvar2;
+			private ParameterReference resultvar;
+
+			public MaterialProxy_Subtract( VKFParamMap parameters )
+			{
+				this.srcvar1 = new ParameterReference( parameters.val["srcvar1"] );
+				this.srcvar2 = new ParameterReference( parameters.val["srcvar2"] );
+				this.resultvar = new ParameterReference( parameters.val["resultvar"] );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				ParamSetNum( map, this.resultvar, ParamGetNum( map, this.srcvar1 ) - ParamGetNum( map, this.srcvar2 ) );
+			}
+		}
+
+		class MaterialProxy_Multiply : MaterialProxy
+		{
+			public static string type = "multiply";
+
+			private ParameterReference srcvar1;
+			private ParameterReference srcvar2;
+			private ParameterReference resultvar;
+
+			public MaterialProxy_Multiply( VKFParamMap parameters )
+			{
+				srcvar1 = new ParameterReference( parameters.val["srcvar1"] );
+				srcvar2 = new ParameterReference( parameters.val["srcvar2"] );
+				resultvar = new ParameterReference( parameters.val["resultvar"] );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				ParamSetNum( map, resultvar, ParamGetNum( map, srcvar1 ) * ParamGetNum( map, srcvar2 ) );
+			}
+		}
+
+		class MaterialProxy_Clamp : MaterialProxy
+		{
+			public static string type = "clamp";
+
+			private ParameterReference srcvar1;
+			private ParameterReference min;
+			private ParameterReference max;
+			private ParameterReference resultvar;
+
+			public MaterialProxy_Clamp( VKFParamMap parameters )
+			{
+				srcvar1 = new ParameterReference( parameters.val["srcvar1"] );
+				min = new ParameterReference( parameters.val["min"], 0.0f );
+				max = new ParameterReference( parameters.val["max"], 1.0f );
+				resultvar = new ParameterReference( parameters.val["resultvar"] );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				ParamSetNum( map, resultvar, Sandbox.MathX.Clamp( ParamGetNum( map, srcvar1 ), ParamGetNum( map, min ), ParamGetNum( map, max ) ) );
+			}
+		}
+
+
+		class MaterialProxy_Abs : MaterialProxy
+		{
+			public static string type = "abs";
+
+			private ParameterReference srcvar1;
+			private ParameterReference resultvar;
+
+			public MaterialProxy_Abs( VKFParamMap parameters )
+			{
+				this.srcvar1 = new ParameterReference( parameters.val["srcvar1"] );
+				this.resultvar = new ParameterReference( parameters.val["resultvar"] );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				ParamSetNum( map, this.resultvar, Math.Abs( ParamGetNum( map, this.srcvar1 ) ) );
+			}
+		}
+
+		class MaterialProxy_LessOrEqual : MaterialProxy
+		{
+			public static string type = "lessorequal";
+
+			private ParameterReference srcvar1;
+			private ParameterReference srcvar2;
+			private ParameterReference lessequalvar;
+			private ParameterReference greatervar;
+			private ParameterReference resultvar;
+
+			public MaterialProxy_LessOrEqual( VKFParamMap parameters )
+			{
+				this.srcvar1 = new ParameterReference( parameters.val["srcvar1"] );
+				this.srcvar2 = new ParameterReference( parameters.val["srcvar2"] );
+				this.lessequalvar = new ParameterReference( parameters.val["lessequalvar"] );
+				this.greatervar = new ParameterReference( parameters.val["greatervar"] );
+				this.resultvar = new ParameterReference( parameters.val["resultvar"] );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				float src1 = ParamGetNum( map, this.srcvar1 );
+				float src2 = ParamGetNum( map, this.srcvar2 );
+				ParameterReference p = (src1 <= src2) ? this.lessequalvar : this.greatervar;
+				ParamLookup<Parameter>( map, this.resultvar ).Set( ParamLookup<Parameter>( map, p ) );
+			}
+		}
+
+
+		class MaterialProxy_LinearRamp : MaterialProxy
+		{
+			public static string type = "linearramp";
+
+			private ParameterReference rate;
+			private ParameterReference initialvalue;
+			private ParameterReference resultvar;
+
+			public MaterialProxy_LinearRamp( VKFParamMap parameters )
+			{
+				rate = new ParameterReference( parameters.val["rate"] );
+				initialvalue = new ParameterReference( parameters.val["initialvalue"], 0.0f );
+				resultvar = new ParameterReference( parameters.val["resultvar"], 1.0f );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				float rateValue = ParamGetNum( map, rate );
+				float initialValue = ParamGetNum( map, initialvalue );
+				float v = initialValue + (rateValue * renderContext.globalTime);
+				ParamSetNum( map, resultvar, v );
+			}
+		}
+
+		class MaterialProxy_Sine : MaterialProxy
+		{
+			public static string type = "sine";
+
+			private ParameterReference sineperiod;
+			private ParameterReference sinemin;
+			private ParameterReference sinemax;
+			private ParameterReference timeoffset;
+			private ParameterReference resultvar;
+
+			public MaterialProxy_Sine( VKFParamMap parameters )
+			{
+				sineperiod = new ParameterReference( parameters.val["sineperiod"], 1.0f );
+				sinemin = new ParameterReference( parameters.val["sinemin"], 0.0f );
+				sinemax = new ParameterReference( parameters.val["sinemax"], 1.0f );
+				timeoffset = new ParameterReference( parameters.val["timeoffset"], 0.0f );
+				resultvar = new ParameterReference( parameters.val["resultvar"] );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				float freq = 1.0f / ParamGetNum( map, sineperiod );
+				float t = (renderContext.globalTime - ParamGetNum( map, timeoffset ));
+				float min = ParamGetNum( map, sinemin );
+				float max = ParamGetNum( map, sinemax );
+				float v = MathX.Lerp( min, max, MathX.LerpInverse( -1.0f, 1.0f, MathF.Sin( MathF.Tau * freq * t ) ) );
+				ParamSetNum( map, resultvar, v );
+			}
+		}
+
+
+		class MaterialProxy_GaussianNoise : MaterialProxy
+		{
+			public static readonly string Type = "gaussiannoise";
+
+			private readonly ParameterReference resultvar;
+			private readonly ParameterReference minval;
+			private readonly ParameterReference maxval;
+			private readonly ParameterReference mean;
+			private readonly ParameterReference halfwidth;
+
+			public MaterialProxy_GaussianNoise( VKFParamMap parameters )
+			{
+				this.resultvar = new ParameterReference( parameters.val["resultvar"] );
+				this.minval = new ParameterReference( parameters.val["minval"], float.MinValue );
+				this.maxval = new ParameterReference( parameters.val["maxval"], float.MaxValue );
+				this.mean = new ParameterReference( parameters.val["mean"], 0.0f );
+				this.halfwidth = new ParameterReference( parameters.val["halfwidth"], 0.0f );
+			}
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				float r = GaussianRandom( ParamGetNum( map, this.mean ), ParamGetNum( map, this.halfwidth ) );
+				float v = MathX.Clamp( r, ParamGetNum( map, this.minval ), ParamGetNum( map, this.maxval ) );
+				ParamSetNum( map, this.resultvar, v );
+			}
+
+			private static float GaussianRandom( float mean, float halfwidth )
+			{
+				// https://en.wikipedia.org/wiki/Marsaglia_polar_method
+
+				// pick two points inside a circle
+				float x, y, s;
+				do
+				{
+					x = 2.0f * Game.Random.Float() - 1.0f;
+					y = 2.0f * Game.Random.Float() - 1.0f;
+					s = MathF.Sqrt( x * x + y * y );
+				} while ( s > 1.0 );
+
+				float f = MathF.Sqrt( -2.0f * MathF.Log( s ) );
+
+				// return one of the two sampled values
+				return mean + halfwidth * x * f;
+			}
+		}
+
+
+
+
+	class MaterialProxy_TextureScroll : MaterialProxy
+	{
+		public static string type = "texturescroll";
+
+		private ParameterReference texturescrollvar;
+		private ParameterReference texturescrollangle;
+		private ParameterReference texturescrollrate;
+		private ParameterReference texturescale;
+
+		public MaterialProxy_TextureScroll( VKFParamMap parameters )
+		{
+			texturescrollvar = new ParameterReference( parameters.val["texturescrollvar"] );
+			texturescrollrate = new ParameterReference( parameters.val["texturescrollrate"], 1.0f );
+			texturescrollangle = new ParameterReference( parameters.val["texturescrollangle"], 0.0f );
+			texturescale = new ParameterReference( parameters.val["texturescale"], 1.0f );
+		}
+
+		public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+			var p = ParamLookup<Parameter>( map, texturescrollvar );
+
+			float scale = ParamGetNum( map, texturescale );
+			float angle = ParamGetNum( map, texturescrollangle ) * DEG_TO_RAD;
+			float rate = ParamGetNum( map, texturescrollrate ) * renderContext.globalTime;
+			float offsS = (MathF.Cos( angle ) * rate) % 1.0f;
+			float offsT = (MathF.Sin( angle ) * rate) % 1.0f;
+
+			if ( p is ParameterMatrix )
+			{
+				ParameterMatrix matrix = (ParameterMatrix)p;
+				//matrix.matrix = Matrix4x4.Identity;
+				matrix.matrix.M11 = scale; // Verify
+					matrix.matrix.M22 = scale;// Verify
+					matrix.matrix.M41 = offsS;// Verify
+					matrix.matrix.M42 = offsT;// Verify
+				}
+			else if ( p is ParameterVector )
+			{
+				ParameterVector vector = (ParameterVector)p;
+				vector.internalArr[0].value = offsS;
+				vector.internalArr[1].value = offsT;
+			}
+			else
+			{
+				// not sure
+				//Debugger.Break();
+			}
+		}
+	}
+
+
+		class MaterialProxy_PlayerProximity : MaterialProxy
+		{
+			public static string type = "playerproximity";
+
+			private ParameterReference resultvar;
+			private ParameterReference scale;
+
+			public MaterialProxy_PlayerProximity( VKFParamMap parameters )
+			{
+				resultvar = new ParameterReference( parameters.val["resultvar"] );
+				scale = new ParameterReference( parameters.val["scale"] );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				if ( entityParams == null )
+					return;
+
+				float scaleValue = ParamGetNum( map, scale );
+				//float dist = Vector3.Distance( renderContext.currentView.cameraPos, entityParams.position ); //verify
+				//ParamSetNum( map, resultvar, dist * scaleValue ); verify
+			}
+		}
+
+
+		public class MaterialProxy_AnimatedTexture : MaterialProxy
+		{
+			public static string type = "animatedtexture";
+
+			private ParameterReference animatedtexturevar;
+			private ParameterReference animatedtextureframenumvar;
+			private ParameterReference animatedtextureframerate;
+			private ParameterReference animationnowrap;
+
+			public MaterialProxy_AnimatedTexture( VKFParamMap parameters )
+			{
+				this.animatedtexturevar = new ParameterReference( parameters.val["animatedtexturevar"] );
+				this.animatedtextureframenumvar = new ParameterReference( parameters.val["animatedtextureframenumvar"] );
+				this.animatedtextureframerate = new ParameterReference( parameters.val["animatedtextureframerate"], 15.0f );
+				this.animationnowrap = new ParameterReference( parameters.val["animationnowrap"], 0 );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				ParameterTexture ptex = ParamLookup<ParameterTexture>( map, this.animatedtexturevar );
+
+				// This can happen if the parameter is not actually a texture, if we haven't implemented something yet.
+				if ( ptex.Texture == null )
+					return;
+
+				float rate = ParamGetNum( map, this.animatedtextureframerate );
+				bool wrap = !(ParamGetNum( map, this.animationnowrap ) > 0.0f); //verify
+
+				float animationStartTime = entityParams != null ? entityParams.animationStartTime : 0;
+				float frame = (renderContext.globalTime - animationStartTime) * rate;
+				if ( wrap )
+				{
+					frame %= ptex.Texture.numFrames;
+				}
+				else
+				{
+					frame = Math.Min( frame, ptex.Texture.numFrames );
+				}
+
+				ParamSetNum( map, this.animatedtextureframenumvar, frame );
+			}
+		}
+
+
+		class MaterialProxy_MaterialModify : MaterialProxy
+		{
+			public static string type = "materialmodify";
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				// Nothing to do
+			}
+		}
+
+		class MaterialProxy_MaterialModifyAnimated : MaterialProxy_AnimatedTexture
+		{
+			public static new string type = "materialmodifyanimated";
+
+			public MaterialProxy_MaterialModifyAnimated( VKFParamMap parameters ) : base( parameters )
+			{
+			}
+		}
+
+		class MaterialProxy_WaterLOD : MaterialProxy
+		{
+			public static string type = "waterlod";
+
+			public MaterialProxy_WaterLOD( VKFParamMap parameters )
+			{
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				if ( map.value.ContainsKey( "$cheapwaterstartdistance" ) )
+					((ParameterNumber)map.value["$cheapwaterstartdistance"]).value = renderContext.cheapWaterStartDistance;
+				if ( map.value.ContainsKey( "$cheapwaterenddistance" ) )
+					((ParameterNumber)map.value["$cheapwaterenddistance"]).value = renderContext.cheapWaterEndDistance;
+			}
+		}
+
+
+
+		class MaterialProxy_TextureTransform : MaterialProxy
+		{
+			public static string type = "texturetransform";
+
+			private ParameterReference centervar;
+			private ParameterReference scalevar;
+			private ParameterReference rotatevar;
+			private ParameterReference translatevar;
+			private ParameterReference resultvar;
+
+			public MaterialProxy_TextureTransform( VKFParamMap parameters )
+			{
+				this.centervar = new ParameterReference( parameters.val["centervar"], null, false );
+				this.scalevar = new ParameterReference( parameters.val["scalevar"], null, false );
+				this.rotatevar = new ParameterReference( parameters.val["rotatevar"], null, false );
+				this.translatevar = new ParameterReference( parameters.val["translatevar"], null, false );
+				this.resultvar = new ParameterReference( parameters.val["resultvar"] );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				Parameter center = ParamLookupOptional< Parameter>( map.value, this.centervar );
+				Parameter scale = ParamLookupOptional<Parameter>( map.value, this.scalevar );
+				ParameterNumber rotate = ParamLookupOptional<ParameterNumber>( map.value, this.rotatevar );
+				Parameter translate = ParamLookupOptional<Parameter>( map.value, this.translatevar );
+
+				float cx = 0.5f, cy = 0.5f;
+				if ( center is ParameterNumber )
+				{
+					cx = cy = ((ParameterNumber)center).value;
+				}
+				else if ( center is ParameterVector )
+				{
+					cx = ((ParameterVector)center).Index( 0 )!.value;
+					cy = ((ParameterVector)center).Index( 1 )!.value;
+				}
+
+				float sx = 1.0f, sy = 1.0f;
+				if ( scale is ParameterNumber )
+				{
+					sx = sy = ((ParameterNumber)scale).value;
+				}
+				else if ( scale is ParameterVector )
+				{
+					sx = ((ParameterVector)scale).Index( 0 )!.value;
+					sy = ((ParameterVector)scale).Index( 1 )!.value;
+				}
+
+				float r = 0.0f;
+				if ( rotate != null )
+					r = rotate.value;
+
+				float tx = 0.0f, ty = 0.0f;
+				if ( translate is ParameterNumber )
+				{
+					tx = ty = ((ParameterNumber)translate).value;
+				}
+				else if ( translate is ParameterVector )
+				{
+					tx = ((ParameterVector)translate).Index( 0 )!.value;
+					ty = ((ParameterVector)translate).Index( 1 )!.value;
+				}
+
+				ParameterMatrix result = ParamLookup<ParameterMatrix>( map, this.resultvar );
+				result.setMatrix( cx, cy, sx, sy, r, tx, ty );
+			}
+		}
+
+
+
+	class MaterialProxy_ToggleTexture : MaterialProxy
+		{
+		public static string type = "toggletexture";
+
+		private ParameterReference toggletexturevar;
+		private ParameterReference toggletextureframenumvar;
+		private ParameterReference toggleshouldwrap;
+
+		public MaterialProxy_ToggleTexture( VKFParamMap parameters )
+		{
+			toggletexturevar = new ParameterReference( parameters.val["toggletexturevar"] );
+			toggletextureframenumvar = new ParameterReference( parameters.val["toggletextureframenumvar"] );
+			toggleshouldwrap = new ParameterReference( parameters.val["toggleshouldwrap"], 1.0f );
+		}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+			ParameterTexture ptex = ParamLookup<ParameterTexture>( map, toggletexturevar );
+			if ( ptex.Texture == null || entityParams == null )
+			{
+				return;
+			}
+
+			bool wrap = Convert.ToBoolean( ParamGetNum( map, toggleshouldwrap ) );
+
+			int frame = entityParams.textureFrameIndex;
+			if ( wrap )
+			{
+				frame = frame % ptex.Texture.numFrames;
+			}
+			else
+			{
+				frame = Math.Min( frame, ptex.Texture.numFrames );
+			}
+
+			ParamSetNum( map, toggletextureframenumvar, (float)frame );
+		}
+	}
+
+		class MaterialProxy_EntityRandom : MaterialProxy
+		{
+			public static string type = "entityrandom";
+
+			private ParameterReference scale;
+			private ParameterReference resultvar;
+
+			public MaterialProxy_EntityRandom( VKFParamMap parameters )
+			{
+				this.scale = new ParameterReference( parameters.val["scale"] );
+				this.resultvar = new ParameterReference( parameters.val["resultvar"] );
+			}
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				if ( entityParams == null )
+				{
+					return;
+				}
+
+				float scale = ParamGetNum( map, this.scale );
+				ParamSetNum( map, this.resultvar, entityParams.randomNumber * scale );
+			}
+		}
+
+		class MaterialProxy_FizzlerVortex : MaterialProxy
+		{
+			public static string type = "fizzlervortex";
+
+			public override void Update( ParameterMap map, SourceRenderContext renderContext, EntityMaterialParameters entityParams = null )
+			{
+				ParameterNumber param = map.value["$flow_color_intensity"] as ParameterNumber;
+				if ( param == null )
+				{
+					return;
+				}
+
+				param.value = 1.0f;
+			}
+		}
 
 
 
@@ -1620,29 +2170,7 @@ namespace MapParser.SourceEngine
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	public static float UnpackColorRGBExp32( byte v, byte exp )
+		public static float UnpackColorRGBExp32( byte v, byte exp )
 		{
 			// exp comes in unsigned, sign extend
 			exp = (byte)((exp << 24) >> 24);
