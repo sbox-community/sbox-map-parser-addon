@@ -105,7 +105,7 @@ namespace MapParser.GoldSrc
 				}
 			}
 		}
-		public static Texture addTexture( byte[] data, string name, int width, int height, string wadname = "From Not WAD File" )
+		public static Texture addTexture( byte[] data, string name, int width, int height, string wadname = "Unknown/Internal" )
 		{
 			lock ( Render.TextureCache.textureData )// Need concurrent dictionary
 			{
@@ -348,7 +348,7 @@ namespace MapParser.GoldSrc
 
 			var texture = Texture.Create( lightmapPackerPage.width, lightmapPackerPage.height ).WithData( dst ).Finish();
 
-			Render.TextureCache.textureData.TryAdd( $"{mapName}_ligthmap", new() { name = $"{mapName}_ligthmap", type = TextureCacheType.MIPTEX, WADname = "From BSP", texture = texture, width = lightmapPackerPage.width, height = lightmapPackerPage.height } );
+			Render.TextureCache.textureData.TryAdd( $"{mapName}_ligthmap", new() { name = $"{mapName}_ligthmap", type = TextureCacheType.MIPTEX, WADname = $"{mapName}.bsp", texture = texture, width = lightmapPackerPage.width, height = lightmapPackerPage.height } );
 
 			return texture;
 		}

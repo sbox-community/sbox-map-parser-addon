@@ -39,6 +39,7 @@
 	public bool rightMouse = false;
 
 	public ModelViewer() {
+
 		world = new SceneWorld();
 
 		orbitCamera = new Orbit(Vector3.Up * 48.0f, Vector3.Backward + Vector3.Down * 0.2f, 100.0f);
@@ -83,9 +84,6 @@
 		scenePanel.AddEventListener("onclose", () => {
 			world.Delete();
 		});
-
-		if (Manager.mainMenu != null && (Manager.mainMenu as Menu) != null && (Manager.mainMenu as Menu).modellist != null && (Manager.mainMenu as Menu).modellist.mv == null)
-			(Manager.mainMenu as Menu).modellist.mv = this;
 	}
 
 	~ModelViewer() {
@@ -155,7 +153,7 @@
 		Model.Update(0.1f);
 	}*/
 
-	public void SetModel(ref string key, ref (List<(MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>[][], MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>, Texture, List<float[]>)>, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data) {
+	public MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL SetModel(ref string key, ref (List<(MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>[][], MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>, Texture, List<float[]>)>, GoldSrc.Entities.ModelDataParser.ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data) {
 
 		if (Model != null) {
 			/*Model.Delete();
@@ -163,20 +161,20 @@
 			Model.render = false;
 		}
 
-		var model = data.Item4;
+		var model = data.Item5;
 		if (model == null) {
 			MapParser.Manager.SpawnParameter settings = new();
 			settings.position = Vector3.Zero;
 			settings.sceneWorld = world;
 
-			var entData = data.Item2;
+			var entData = data.Item3;
 			entData.data["origin"] = "0,0,0";
 			entData.data["renderamt"] = "255";
 
 			List<GoldSrc.EntityParser.EntityData> closestLights = new(); //data.Item3; for now, disabled
 
 			model = MapParser.GoldSrc.Entities.MDLEntity.Create(ref data.Item1, ref entData, ref settings, ref closestLights);
-			data.Item4 = model;
+			data.Item5 = model;
 			MapParser.GoldSrc.Entities.ModelRenderer.ModelCache[key] = data;
 			model.CL.render = true;
 			Model = model.CL;
@@ -185,6 +183,7 @@
 			model.CL.render = true;
 			Model = model.CL;
 		}
+		return Model;
 	}
 
 	private class Orbit : CameraMode {

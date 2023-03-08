@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
+using static MapParser.GoldSrc.Entities.ModelDataParser;
 using static MapParser.Manager;
 
 namespace MapParser.GoldSrc.Entities
@@ -16,13 +17,13 @@ namespace MapParser.GoldSrc.Entities
 	 */
 	public static class ModelRenderer
 	{
-		public static Dictionary<string, (List<(BufferAttribute<float>[][], BufferAttribute<float>, Texture, List<float[]>)>, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MDLEntity)> ModelCache = new();
+		public static Dictionary<string, (List<(BufferAttribute<float>[][], BufferAttribute<float>, Texture, List<float[]>)>, ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MDLEntity)> ModelCache = new();
 
 		public static void clearModelCache()
 		{
 			foreach(var model in ModelCache)
-				if ( model.Value.Item4 != null && model.Value.Item4.CL != null && model.Value.Item4.CL.IsValid() )
-					model.Value.Item4.Delete();
+				if ( model.Value.Item5 != null && model.Value.Item5.CL != null && model.Value.Item5.CL.IsValid() )
+					model.Value.Item5.Delete();
 			ModelCache.Clear();
 		}
 

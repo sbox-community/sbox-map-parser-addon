@@ -137,6 +137,7 @@ namespace MapParser.GoldSrc.Entities
 
 			Graphics.Attributes.Set( "TextureLightmap", lightmap );
 			Graphics.Attributes.Set( "Opacity", opacity );
+			Graphics.Attributes.Set( "Pixelation", clientSettings.pixelation );
 
 			for ( var i = 0; i < vertexBufferCount; i++ )
 			{

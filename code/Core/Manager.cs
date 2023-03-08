@@ -951,7 +951,7 @@ namespace MapParser
 			} );
 
 			var ent = MDLEntity.Create( ref data.Item1, ref entData, ref settings, ref lightEntities );
-			ModelRenderer.ModelCache.TryAdd( data.Item2.header.name, (data.Item1, entData, lightEntities, null) );
+			ModelRenderer.ModelCache.TryAdd( data.Item2.header.name, (data.Item1, data.Item2, entData, lightEntities, null) );
 			return ent;
 	}
 

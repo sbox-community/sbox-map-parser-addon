@@ -256,7 +256,7 @@ namespace MapParser.GoldSrc
 				for ( var i = 0; i < extraTexData.Count(); i++ )
 				{
 					var dataextra = extraTexData[i];
-					_ = TextureCache.addTextureWithMIPTEXData( dataextra, wadname: "FromBSP" );
+					_ = TextureCache.addTextureWithMIPTEXData( dataextra, wadname: Util.PathToMapNameWithExtension(settings.mapName) );
 				}
 			}
 

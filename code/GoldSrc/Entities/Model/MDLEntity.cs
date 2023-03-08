@@ -57,9 +57,9 @@ namespace MapParser.GoldSrc.Entities
 			List<List<List<List<VertexBuffer>>>> vertexBuffers = new();
 			private static Material renderMat = Material.FromShader( "shaders/goldsrc_model_render.shader" );
 			List<Sandbox.Texture> textures = new();
-			List<bool> enabledSubmodels = new();
-			int activeAnimation = 0;
-			float frameRate = 60.0f;  //60fps, added fps from entity but is fps from sequences (or from header) needed?, is it needed bbmax bbmin for physics?
+			public List<bool> enabledSubmodels = new();
+			public int activeSequence = 0;
+			public float frameRate = 60.0f;  //60fps, added fps from entity but is fps from sequences (or from header) needed?, is it needed bbmax bbmin for physics?
 			double frameState = 0.0f;
 			double timeTaken = 0;
 			float opacity = 1f;
@@ -331,7 +331,7 @@ namespace MapParser.GoldSrc.Entities
 							Delete();
 							return;
 						}
-						var animation = vertexBuffers[i][activeAnimation];
+						var animation = vertexBuffers[i][activeSequence];
 
 						if ( frameState > animation.Count - 1 )
 							frameState = 0;

@@ -12,7 +12,7 @@
 
 <style>
 	
-	ModelList {
+	ModelSequenceList {
 		width:100%;
 		height: 100%;
 		border-radius: 2px;
@@ -85,17 +85,22 @@
 </style>
 
 <div class="rowHeader">
-	<div class="rowHeader_item">Models (@MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.Count())</div>
+	<div class="rowHeader_item">
+		Sequences @if (selectedModelEntity is not null && !string.IsNullOrEmpty(selectedModel) && MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.TryGetValue(selectedModel, out var data)) {
+			
+			@($"({data.Item2.sequences.Count()})")
+		}
+		</div>
 </div>
 <div class="row">
-	@if (MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.Count() != 0) {
-		@foreach (var modelCacheData in MapParser.GoldSrc.Entities.ModelRenderer.ModelCache) // Need concurrentDictionary
+	@if (selectedModelEntity is not null && MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.TryGetValue(selectedModel, out var data)) {
+		@for (var i = 0; i < data.Item2.sequences.Count(); i++)
 		{
-			<div class="rowItem @(selectedData.Equals(modelCacheData.Key))" @onclick=@(() => selectRow(modelCacheData.Key, modelCacheData.Value))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(Util.PathToMapNameWithExtension(modelCacheData.Key))</div></div>
+			<div class="rowItem @(selectedModelEntity?.activeSequence == i)" @onclick=@(() => selectRow(i, data.Item2.sequences[i]))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(data.Item2.sequences[i].label)</div></div>
 		}
 	}
-	@if (MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.Count() == 0) {
-		<div class="rowItem" style="justify-content:center">Not Cached Model Found</div>
+	@if (selectedModelEntity is null) {
+		<div class="rowItem" style="justify-content:center">No Model Selected</div>
 	}
 </div>
 
@@ -103,9 +108,10 @@
 {
 	string selectedData = "";
 
+	public string selectedModel = "";
+	public MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL? selectedModelEntity;
+
 	public ModelViewer mv;
-	public ModelBodyPartList mbplist;
-	public ModelSequenceList mslist;
 
 	public override void Tick()
 	{
@@ -113,18 +119,14 @@
 	}
 	protected override int BuildHash()
 	{
-		return HashCode.Combine(selectedData);
+		return HashCode.Combine(selectedData, selectedModel);
 	}
-	void selectRow(string key, (List<(MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>[][], MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>, Texture, List<float[]>)>, GoldSrc.Entities.ModelDataParser.ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data) {
+	void selectRow( int i, GoldSrc.Entities.Structs.SeqDesc sequence ) {
+		if (selectedModelEntity is not null) {
+			selectedModelEntity.activeSequence = i;
 
-		var createdCLEnt = mv.SetModel(ref key, ref data);
+			selectedData = sequence.label;
+		}
 
-		mbplist.selectedModelEntity = createdCLEnt;
-		mbplist.selectedModel = key;
-
-		mslist.selectedModelEntity = createdCLEnt;
-		mslist.selectedModel = key;
-
-		selectedData = key;
 	}
 }
