@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using static MapParser.SourceEngine.Gfx;
+using static MapParser.SourceEngine.Materials;
 
 namespace MapParser.SourceEngine
 {
@@ -263,10 +264,18 @@ namespace MapParser.SourceEngine
 	private int versionMajor;
 	private int versionMinor;
 
-		public VTF( byte[] buffer, string name, bool srgb, string lateBinding = null ) //GfxDevice device, GfxRenderCache cache, 
+		public string name;
+		public bool srgb;
+		public LateBindingTexture lateBinding;
+
+		public VTF( byte[] buffer, string name, bool srgb, LateBindingTexture lateBinding = 0) //GfxDevice device, GfxRenderCache cache,  //verify, lateBinding default param
 		{
 			if ( buffer == null )
 				return;
+
+			this.name = name;
+			this.srgb = srgb;
+			this.lateBinding = lateBinding;
 
 			//var view = buffer.CreateDataView();
 

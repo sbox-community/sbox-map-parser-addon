@@ -246,7 +246,7 @@ namespace MapParser.SourceEngine
 			//public WorldLightingState worldLightingState = new WorldLightingState();
 			public float globalTime = 0;
 			public float globalDeltaTime = 0;
-			//public Material.MaterialProxySystem materialProxySystem = new MaterialProxySystem();
+			public Materials.MaterialProxySystem materialProxySystem = new MaterialProxySystem();
 			public float cheapWaterStartDistance = 0.0f;
 			public float cheapWaterEndDistance = 0.1f;
 			//public SourceWorldViewRenderer currentViewRenderer = null;

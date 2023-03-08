@@ -618,7 +618,7 @@ namespace MapParser.SourceEngine
 			public VTF representativeTexture = null;
 
 			protected bool loaded = false;
-			//protected MaterialProxyDriver proxyDriver = null;
+			protected MaterialProxyDriver proxyDriver = null;
 			protected Vector2 texCoord0Scale = Vector2.Zero;
 			protected bool isAdditive = false;
 			protected bool isToneMapped = true;
@@ -635,7 +635,7 @@ namespace MapParser.SourceEngine
 				this.setupParametersFromVMT( renderContext );
 				if ( this.vmt.proxies != null )
 				{
-					//this.proxyDriver = renderContext.materialProxySystem.CreateProxyDriver( this, this.vmt.proxies );
+					this.proxyDriver = renderContext.materialProxySystem.CreateProxyDriver( this, this.vmt.proxies );
 				}
 
 				this.InitStaticBeforeResourceFetch();
@@ -844,7 +844,7 @@ namespace MapParser.SourceEngine
 				this.paramGetVector( name ).FillColor( ref scratchColor, alpha );
 				return Util.FillColor( ref d, offs, in scratchColor );
 			}
-			/*protected bool vtfIsIndirect( VTF vtf )
+			protected bool vtfIsIndirect( VTF vtf )
 			{
 				// These bindings only get resolved in indirect passes...
 				if ( vtf.lateBinding == LateBindingTexture.FramebufferColor )
@@ -855,13 +855,13 @@ namespace MapParser.SourceEngine
 					return true;
 
 				return false;
-			}*/
+			}
 			protected bool textureIsIndirect( string name )
 			{
 				var vtf = this.ParamGetVTF( name );
 
-				//if ( vtf != null && this.vtfIsIndirect( vtf ) )
-				//	return true;
+				if ( vtf != null && this.vtfIsIndirect( vtf ) )
+					return true;
 
 				return false;
 			}
@@ -1007,8 +1007,8 @@ namespace MapParser.SourceEngine
 				if ( vtf == null )
 					return false;
 
-				//if ( VtfIsIndirect( vtf ) )
-				//	return false;
+				if ( vtfIsIndirect( vtf ) )
+					return false;
 
 				return true;
 			}
@@ -1067,20 +1067,20 @@ namespace MapParser.SourceEngine
 				if ( !visible || !IsMaterialLoaded() )
 					return;
 
-				if ( EntityParams != null )
+				if ( entityParams != null )
 				{
 					// Update our color/alpha based on entity params.
-					Vector3 color = paramGetVector( "$color" );
+					Vector3 color = paramGetVector( "$color" );//.internalArr.Select(x=>x.value); bunu internal index get yap
 					if ( color != null )
-						color.SetFromColor( EntityParams.BlendColor );
+						color.SetFromColor( entityParams.blendColor );
 
 					ParameterNumber alpha = param.value["$alpha"] as ParameterNumber;
 					if ( alpha != null )
-						alpha.value = EntityParams.BlendColor.A;
+						alpha.value = entityParams.blendColor.a;
 				}
 
-				if ( ProxyDriver != null )
-					ProxyDriver.Update( context, EntityParams );
+				if ( proxyDriver != null )
+					proxyDriver.Update( context, entityParams );
 			}
 			protected void SetupOverrideSceneParams( SourceRenderContext renderContext, GfxRenderInst renderInst )
 			{
@@ -1213,8 +1213,10 @@ namespace MapParser.SourceEngine
 			//public ShaderTemplates shaderTemplates = new ShaderTemplates();
 			public Main.SourceFileSystem filesystem;
 
+
 			public MaterialCache( Main.SourceFileSystem filesystem ) //GfxDevice device, GfxRenderCache cache,
 			{
+				
 				this.filesystem = filesystem;
 				// Install render targets
 				/*var _rt_Camera = new VTF( device, cache, null, "_rt_Camera", false, LateBindingTexture.Camera );
@@ -1445,7 +1447,7 @@ namespace MapParser.SourceEngine
 			}
 		}
 
-/*
+
 	public class MaterialProxySystem
 	{
 		public Dictionary<string, MaterialProxyFactory> proxyFactories = new Dictionary<string, MaterialProxyFactory>();
@@ -1456,27 +1458,27 @@ namespace MapParser.SourceEngine
 		}
 
 		private void RegisterDefaultProxyFactories() // Verify
-			{
+		{
 			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_Equals ).ToString() } ); // new MaterialProxy_Equals( null )
 			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_Add ).ToString() } );//MaterialProxy_Add()
-			RegisterProxyFactory( new MaterialProxy_Subtract() );
-			RegisterProxyFactory( new MaterialProxy_Multiply() );
-			RegisterProxyFactory( new MaterialProxy_Clamp() );
-			RegisterProxyFactory( new MaterialProxy_Abs() );
-			RegisterProxyFactory( new MaterialProxy_LessOrEqual() );
-			RegisterProxyFactory( new MaterialProxy_LinearRamp() );
-			RegisterProxyFactory( new MaterialProxy_Sine() );
-			RegisterProxyFactory( new MaterialProxy_TextureScroll() );
-			RegisterProxyFactory( new MaterialProxy_PlayerProximity() );
-			RegisterProxyFactory( new MaterialProxy_GaussianNoise() );
-			RegisterProxyFactory( new MaterialProxy_AnimatedTexture() );
-			RegisterProxyFactory( new MaterialProxy_MaterialModify() );
-			RegisterProxyFactory( new MaterialProxy_MaterialModifyAnimated() );
-			RegisterProxyFactory( new MaterialProxy_WaterLOD() );
-			RegisterProxyFactory( new MaterialProxy_TextureTransform() );
-			RegisterProxyFactory( new MaterialProxy_ToggleTexture() );
-			RegisterProxyFactory( new MaterialProxy_EntityRandom() );
-			RegisterProxyFactory( new MaterialProxy_FizzlerVortex() );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_Subtract ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_Multiply ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_Clamp ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_Abs ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_LessOrEqual ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_LinearRamp ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_Sine ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_TextureScroll ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_PlayerProximity ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_GaussianNoise ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_AnimatedTexture ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_MaterialModify ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_MaterialModifyAnimated ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_WaterLOD ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_TextureTransform ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_ToggleTexture ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_EntityRandom ).ToString() } );
+			RegisterProxyFactory( new MaterialProxyFactory() { type = typeof( MaterialProxy_FizzlerVortex ).ToString() } );
 		}
 
 		public void RegisterProxyFactory( MaterialProxyFactory factory )
@@ -1484,29 +1486,31 @@ namespace MapParser.SourceEngine
 			proxyFactories[factory.type] = factory;
 		}
 
-		public MaterialProxyDriver CreateProxyDriver( BaseMaterial material, List<(string, VKFParamMap)> proxyDefs )
+		public MaterialProxyDriver CreateProxyDriver( BaseMaterial material, object _proxyDefs )
 		{
+			var proxyDefs = (List<(string, VKFParamMap)>)_proxyDefs; //verify
+
 			List<MaterialProxy> proxies = new List<MaterialProxy>();
 			for ( int i = 0; i < proxyDefs.Count; i++ )
 			{
-				(string name, VKFParamMap params) = proxyDefs[i];
-			if ( proxyFactories.TryGetValue( name, out MaterialProxyFactory proxyFactory ) )
-			{
-				MaterialProxy proxy = proxyFactory.Create ( params);
-				proxies.Add( proxy );
+				(string name, VKFParamMap parameters) = proxyDefs[i];
+				if ( proxyFactories.TryGetValue( name, out MaterialProxyFactory proxyFactory ) )
+				{
+					MaterialProxy proxy = proxyFactory.Create( parameters );
+					proxies.Add( proxy );
+				}
+				else
+				{
+					Log.Error( $"unknown proxy type: {name}");
+				}
 			}
-			else
-			{
-				Console.WriteLine( "unknown proxy type: " + name );
-			}
+			return new MaterialProxyDriver( material, proxies );
 		}
-        return new MaterialProxyDriver( material, proxies);
 	}
-}*/
 
 
 
-	class MaterialProxyDriver
+	public class MaterialProxyDriver
 	{
 		private BaseMaterial material;
 		private List<MaterialProxy> proxies;
