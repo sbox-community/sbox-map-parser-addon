@@ -97,32 +97,36 @@
 	}
 }
 </style>
+<div style="flex-direction:row">>
+	<div style="flex-direction:column">
+		<div class="rowHeader">
+			<div class="rowHeader_item">Maps</div>
+		</div>
+		<div @ref="rowPanel" class="row">
+			@if (maps.Count() != 0)
+			{
+				@for(var i = (limit*page); i < (limit*(page+1)); i++)
+				{
+					@if (maps.Count() <= i)
+						break;
 
-<div class="rowHeader">
-	<div class="rowHeader_item">Maps</div>
-</div>
-<div class="row">
-	@if (maps.Count() != 0)
-	{
-		@for(var i = (limit*page); i < (limit*(page+1)); i++)
+					var map = maps[i];
+					<div class="rowItem @(selectedMap.Equals(map))" @onclick=@(() => selectRow(map))>@(map)</div>
+				}
+			}
+			@if (maps.Count() == 0)
+			{
+				<div class="rowItem">Not Found</div>
+			}
+		</div>
+		<div class="pagination">
+		@for (var i = 0; i < Math.Ceiling((float)maps.Count() / (float)limit); i++)
 		{
-			@if (maps.Count() <= i)
-				break;
-
-			var map = maps[i];
-			<div class="rowItem @(selectedMap.Equals(map))" @onclick=@(() => selectRow(map))>@(map)</div>
+			<Button id="@i" style="@(page==i ? "font-color:white;": "font-color:black;")" class="@(page==i)" @onclick=@((PanelEvent e) => changePage(e.This.Id.ToInt()))>@(i + 1)</Button>
 		}
-	}
-	@if (maps.Count() == 0)
-	{
-		<div class="rowItem">Not Found</div>
-	}
-</div>
-<div class="pagination">
-@for (var i = 0; i < Math.Ceiling((float)maps.Count() / (float)limit); i++)
-{
-	<Button id="@i" style="@(page==i ? "font-color:white;": "font-color:black;")" class="@(page==i)" @onclick=@((PanelEvent e) => changePage(e.This.Id.ToInt()))>@(i + 1)</Button>
-}
+		</div>
+	</div>
+	<ScrollBar @ref="scrollBar" style="position:absolute;width:3%;height:100%;background-color:red"></ScrollBar>
 </div>
 @code
 {
@@ -131,6 +135,8 @@
 	public string selectedMap { get; set; } = "";
 
 	public List<string> maps { get; set; }  = new List<string>();
+	public Panel rowPanel { get; set; }
+	public ScrollBar scrollBar { get; set; }
 
 	public override void Tick()
 	{
@@ -146,4 +152,10 @@
 			selectedMap = selectedmap;
 	}
 	public void changePage(int i) => page = i;
+
+	protected override void OnAfterTreeRender(bool firstTime) {
+		if (firstTime) {
+			scrollBar.mapList = this;
+		}
+	}
 }

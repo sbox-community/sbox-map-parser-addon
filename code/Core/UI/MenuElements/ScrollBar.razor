@@ -1,0 +1,47 @@
+<!-- sbox.Community © 2023-2024 -->
+
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using Sandbox.Diagnostics;
+@using System.Collections.Generic;
+@using System.Linq;
+@using System.Threading.Tasks;
+
+
+@namespace MapParser
+@inherits Panel
+
+<style>
+	
+	ScrollBar {
+		background: linear-gradient(to bottom, #7f7f7f, #bdbdbd);
+		box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
+		padding:0px 4px 2px 4px;
+		flex-direction:row;
+		border-radius: 2px;
+		flex-shrink: 0;
+		margin:4px;
+
+		&:hover{
+			background: linear-gradient(to top, #bdbdbd);
+		}
+}
+</style>
+
+
+
+@code
+{
+	public ExternalMapList mapList;
+	public override void Tick()
+	{
+		//Log.Info(mapList.rowPanel.ScrollOffset);
+		base.Tick();
+	}
+	/*protected override int BuildHash()
+	{
+		return HashCode.Combine();
+	}*/
+
+}

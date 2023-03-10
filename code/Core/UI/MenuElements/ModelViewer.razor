@@ -153,12 +153,15 @@
 		Model.Update(0.1f);
 	}*/
 
-	public MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL SetModel(ref string key, ref (List<(MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>[][], MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>, Texture, List<float[]>)>, GoldSrc.Entities.ModelDataParser.ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data) {
+	public MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL SetModel(ref string key, ref (List<List<(MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>[][], MapParser.GoldSrc.Entities.ModelRenderer.BufferAttribute<float>, Texture, List<float[]>)>>, GoldSrc.Entities.ModelDataParser.ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data, int bodypart = 0, bool forceSpawn = false) {
 
 		if (Model != null) {
-			/*Model.Delete();
-			Model = null;*/
 			Model.render = false;
+
+			if (forceSpawn) {
+				Model.Delete();
+				Model = null;
+			}
 		}
 
 		var model = data.Item5;
@@ -170,6 +173,7 @@
 			var entData = data.Item3;
 			entData.data["origin"] = "0,0,0";
 			entData.data["renderamt"] = "255";
+			entData.data["bodypart"] = bodypart.ToString(); // custom
 
 			List<GoldSrc.EntityParser.EntityData> closestLights = new(); //data.Item3; for now, disabled
 

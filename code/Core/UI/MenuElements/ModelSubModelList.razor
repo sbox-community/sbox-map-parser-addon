@@ -6,13 +6,12 @@
 @using System.Linq;
 @using System.Threading.Tasks;
 
-
 @namespace MapParser
 @inherits Panel
 
 <style>
 	
-	ModelBodyPartList {
+	ModelSubModelList {
 		width:100%;
 		height: 100%;
 		border-radius: 2px;
@@ -86,7 +85,7 @@
 
 <div class="rowHeader">
 	<div class="rowHeader_item">
-		BodyParts @if (selectedModelEntity is not null && !string.IsNullOrEmpty(selectedModel) && MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.TryGetValue(selectedModel, out var data)) {
+		SubModels @if (selectedModelEntity is not null && !string.IsNullOrEmpty(selectedModel) && MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.TryGetValue(selectedModel, out var data)) {
 			
 			@($"({data.Item2.bodyParts.Count()})")
 		}
@@ -113,8 +112,6 @@
 	public MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL? selectedModelEntity;
 
 	public ModelViewer mv;
-	public ModelSubModelList msmlist;
-	public ModelSequenceList mslist;
 
 	public override void Tick()
 	{
@@ -124,13 +121,12 @@
 	{
 		return HashCode.Combine(selectedData, selectedModel);
 	}
-	void selectRow( int i, GoldSrc.Entities.Structs.BodyPart bodypart ) 
-	{
-		
-		for (var j = 0; j < selectedModelEntity?.enabledBodyParts.Count; j++)
-			selectedModelEntity.enabledBodyParts[j] = j == i;
+	void selectRow( int i, GoldSrc.Entities.Structs.BodyPart bodypart ) {
+		if (selectedModelEntity is not null) {
+			selectedModelEntity.enabledSubmodels[selectedBodyPart][i] = !selectedModelEntity.enabledSubmodels[selectedBodyPart][i];
 
-		selectedBodyPart = i;
-		selectedData = bodypart.name;
+			selectedData = bodypart.name;
+		}
+
 	}
 }

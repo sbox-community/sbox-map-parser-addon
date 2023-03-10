@@ -117,13 +117,13 @@ namespace MapParser.GoldSrc.Entities
 				vertexBufferIndex++;
 			}
 
-			vertexBufferCount = vertexBuffer.Count();
+			vertexBufferCount = vertexBuffer.Count;
 
 			createTextures( texturesNeedLoaded, settings, this );
 
 			Bounds = new BBox( mins, maxs );
 
-			//meshCount = meshInfo.Count();
+			//meshCount = meshInfo.Count;
 		}
 		public async void createTextures( Dictionary<int, string> texturesNeedLoaded, SpawnParameter settings, MapModelEntity mapEntity ) => await GameTask.RunInThreadAsync( () => TextureCache.addTextures( texturesNeedLoaded, settings, mapEntity: mapEntity ) );
 
@@ -155,7 +155,7 @@ namespace MapParser.GoldSrc.Entities
 		{
 			PreparingIndicator.Update( "Texture" );
 
-			for ( var i = 0; i < vertexBuffer.Count(); i++ )
+			for ( var i = 0; i < vertexBuffer.Count; i++ )
 			{
 				var vb = vertexBuffer[i];
 

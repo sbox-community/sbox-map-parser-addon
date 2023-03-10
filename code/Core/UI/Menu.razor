@@ -380,6 +380,7 @@
 						<div style="width:20%;height:100%;flex-direction:column;">
 							<ModelList style="height:30%;" @ref="modellist"></ModelList>
 							<ModelBodyPartList style="height:30%;" @ref="modelbodypartlist"></ModelBodyPartList>
+							<ModelSubModelList style="height:30%;" @ref="modelsubmodellist"></ModelSubModelList>
 							<ModelSequenceList style="height:30%;" @ref="modelsequencelist"></ModelSequenceList>
 							<Button style="width:100%;" tooltip="Clear Model cache.." @onclick=@(() => MapParser.GoldSrc.Entities.ModelRenderer.clearModelCache())><i>remove_circle</i> Clear Models Cache ( Local ) </Button>
 						</div>
@@ -458,6 +459,7 @@
 	public ExternalMapList externalMapList { get; set; }
 	public ModelList modellist { get; set; }
 	public ModelBodyPartList modelbodypartlist { get; set; }
+	public ModelSubModelList modelsubmodellist { get; set; }
 	public ModelSequenceList modelsequencelist { get; set; }
 	public Panel tab_1 { get; set; }
 	public Panel tab_2 { get; set; }
@@ -772,9 +774,14 @@
 		if(firstTime) {
 			modellist.mv = modelviewer;
 			modelbodypartlist.mv = modelviewer;
+			modelsubmodellist.mv = modelviewer;
 			modelsequencelist.mv = modelviewer;
+
 			modellist.mbplist = modelbodypartlist;
 			modellist.mslist = modelsequencelist;
+
+			modelbodypartlist.msmlist = modelsubmodellist;
+			modelbodypartlist.mslist = modelsequencelist;
 		}
 	}
 	protected override int BuildHash()

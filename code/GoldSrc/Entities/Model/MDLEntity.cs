@@ -16,7 +16,7 @@ namespace MapParser.GoldSrc.Entities
 		public MDLEntity_SV SV;
 		public MDLEntity_CL CL;
 
-		public static MDLEntity Create( ref List<(BufferAttribute<float>[][], BufferAttribute<float>, Sandbox.Texture, List<float[]>)> subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
+		public static MDLEntity Create( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, Sandbox.Texture, List<float[]>)>> subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
 		{
 			MDLEntity ent = new MDLEntity();
 
@@ -28,7 +28,7 @@ namespace MapParser.GoldSrc.Entities
 			return ent;
 		}
 
-		// Not good approach, temporary
+		// Not good approach, temporary, tie to the serverside entity's constructor
 		public static bool TryLink( MDLEntity_CL self )
 		{
 			foreach ( var ent in Entity.All.OfType<MDLEntity_SV>() )
@@ -52,12 +52,13 @@ namespace MapParser.GoldSrc.Entities
 
 		public class MDLEntity_CL : SceneCustomObject
 		{
-			// Submodels, animations and frames respectively. Frames are segmented as list because of the limit of vertexBuffer
+			// BodyParts, Submodels, animations and frames respectively. Frames are segmented as list because of the limit of vertexBuffer
 			[SkipHotload]
-			List<List<List<List<VertexBuffer>>>> vertexBuffers = new();
+			List<List<List<List<List<VertexBuffer>>>>> vertexBuffers = new();
 			private static Material renderMat = Material.FromShader( "shaders/goldsrc_model_render.shader" );
 			List<Sandbox.Texture> textures = new();
-			public List<bool> enabledSubmodels = new();
+			public List<List<bool>> enabledSubmodels = new();
+			public List<bool> enabledBodyParts = new(); // TODO: only one bodypart can be enabled
 			public int activeSequence = 0;
 			public float frameRate = 60.0f;  //60fps, added fps from entity but is fps from sequences (or from header) needed?, is it needed bbmax bbmin for physics?
 			double frameState = 0.0f;
@@ -69,7 +70,7 @@ namespace MapParser.GoldSrc.Entities
 			public MDLEntity_SV parent;
 			//private Texture lightmap;
 
-			public MDLEntity_CL( ref List<(BufferAttribute<float>[][], BufferAttribute<float>, Sandbox.Texture, List<float[]>)> subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities ) : base( settings.sceneWorld )
+			public MDLEntity_CL( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, Sandbox.Texture, List<float[]>)>> bodyParts, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities ) : base( settings.sceneWorld )
 			{
 				Flags.IsOpaque = true;
 				Flags.IsTranslucent = false;
@@ -136,125 +137,144 @@ namespace MapParser.GoldSrc.Entities
 
 				bool initializeMinsMaxs = true;
 				ushort meshBatchSize = 612;
-
-				foreach ( var submodel in subModels )
+				
+				foreach ( var bodypart in bodyParts )
 				{
-					var uvArray = submodel.Item2.Array.ToArray();
-					//var lightDataArray = submodel.Item3.Array.ToArray();
+					List< List < List <List<VertexBuffer>>>> submodelList = new();
+					List<bool> enabledSubmodel = new();
 
-					List<List<List<VertexBuffer>>> animationList = new();
-
-					foreach ( var animations in submodel.Item1 )
+					foreach ( var submodel in bodypart )
 					{
-						List<List<VertexBuffer>> frameList = new();
+						var uvArray = submodel.Item2.Array.ToArray();
+						//var lightDataArray = submodel.Item3.Array.ToArray();
 
-						foreach ( var frames in animations )
+						List<List<List<VertexBuffer>>> animationList = new();
+
+						foreach ( var animations in submodel.Item1 )
 						{
-							var meshArray = frames.Array.ToArray();
+							List<List<VertexBuffer>> frameList = new();
 
-							// Flipping mesh and uv's
-							float[] vertices = meshArray;
-							float[] uvs = uvArray.ToArray();
-							//float[] lightData = uvArray.ToArray();
-							int numVertices = vertices.Length / 3;
-							int numUvs = uvs.Length / 2;
-
-							for ( int i = 0; i < numVertices / 2; i++ )
+							foreach ( var frames in animations )
 							{
-								// Swap the ith vertex with the (n-i-1)th vertex
-								int j = numVertices - i - 1;
-								float x = vertices[i * 3];
-								float y = vertices[i * 3 + 1];
-								float z = vertices[i * 3 + 2];
-								vertices[i * 3] = vertices[j * 3];
-								vertices[i * 3 + 1] = vertices[j * 3 + 1];
-								vertices[i * 3 + 2] = vertices[j * 3 + 2];
-								vertices[j * 3] = x;
-								vertices[j * 3 + 1] = y;
-								vertices[j * 3 + 2] = z;
+								var meshArray = frames.Array.ToArray();
 
-								int k = numUvs - i - 1;
-								float ux = uvs[i * 2];
-								float uy = uvs[i * 2 + 1];
-								uvs[i * 2] = uvs[k * 2];
-								uvs[i * 2 + 1] = uvs[k * 2 + 1];
-								uvs[k * 2] = ux;
-								uvs[k * 2 + 1] = uy;
+								// Flipping mesh and uv's
+								float[] vertices = meshArray;
+								float[] uvs = uvArray.ToArray();
+								//float[] lightData = uvArray.ToArray();
+								int numVertices = vertices.Length / 3;
+								int numUvs = uvs.Length / 2;
 
-								/*float lx = lightData[i * 2];
-								float ly = lightData[i * 2 + 1];
-								lightData[i * 2] = lightData[k * 2];
-								lightData[i * 2 + 1] = lightData[k * 2 + 1];
-								lightData[k * 2] = ux;
-								lightData[k * 2 + 1] = uy;*/
-							}
-
-							meshArray = vertices;
-
-							List<VertexBuffer> vbList = new();
-
-							// VertexBuffer has limitation (65536), I think max ~862 vertices can be added but coming too much, so need segmentation
-							float[][] subArrays = Enumerable.Range( 0, (int)Math.Ceiling( (float)meshArray.Length / meshBatchSize ) )
-							.Select( i => meshArray.Skip( i * meshBatchSize ).Take( meshBatchSize ).ToArray() ).ToArray(); //.AsParallel()
-
-							var uvIndex = 0;
-							//var lightsIndex = 0;
-
-							for ( var i = 0; i < subArrays.Count(); i++ )
-							{
-								var arr = subArrays[i];
-
-								VertexBuffer vb = new();
-								vb.Init( false );
-
-								for ( var j = 0; j < arr.Count() / 3; j++ )
+								for ( int i = 0; i < numVertices / 2; i++ )
 								{
-									Transform tf = new();
-									tf.Rotation = Rotation;
-									tf.Position = Position;
+									// Swap the ith vertex with the (n-i-1)th vertex
+									int j = numVertices - i - 1;
+									float x = vertices[i * 3];
+									float y = vertices[i * 3 + 1];
+									float z = vertices[i * 3 + 2];
+									vertices[i * 3] = vertices[j * 3];
+									vertices[i * 3 + 1] = vertices[j * 3 + 1];
+									vertices[i * 3 + 2] = vertices[j * 3 + 2];
+									vertices[j * 3] = x;
+									vertices[j * 3 + 1] = y;
+									vertices[j * 3 + 2] = z;
 
-									var vec = tf.TransformVector( new Vector3( arr[j * 3], arr[j * 3 + 1], arr[j * 3 + 2] ) );
+									int k = numUvs - i - 1;
+									float ux = uvs[i * 2];
+									float uy = uvs[i * 2 + 1];
+									uvs[i * 2] = uvs[k * 2];
+									uvs[i * 2 + 1] = uvs[k * 2 + 1];
+									uvs[k * 2] = ux;
+									uvs[k * 2 + 1] = uy;
 
-									// Finding mins and maxs
-									if ( initializeMinsMaxs )
-									{
-										mins = new Vector3( vec.x, vec.y, vec.z );
-										maxs = new Vector3( vec.x, vec.y, vec.z );
-										initializeMinsMaxs = false;
-									}
-
-									if ( vec.x < mins.x )
-										mins.x = vec.x;
-
-									if ( vec.y < mins.y )
-										mins.y = vec.y;
-
-									if ( vec.z < mins.z )
-										mins.z = vec.z;
-
-									if ( vec.x > maxs.x )
-										maxs.x = vec.x;
-
-									if ( vec.y > maxs.y )
-										maxs.y = vec.y;
-
-									if ( vec.z > maxs.z )
-										maxs.z = vec.z;
-
-									// idk what is lightdata for model, therefore, I was only passed them as Vector4 component, but didn't used anywhere ( lightData[lightsIndex++], lightData[lightsIndex++] )
-									vb.Add( new Vertex( vec, Vector3.Zero, Vector3.Right, new Vector2( uvs[uvIndex++], uvs[uvIndex++] ) ) );
+									/*float lx = lightData[i * 2];
+									float ly = lightData[i * 2 + 1];
+									lightData[i * 2] = lightData[k * 2];
+									lightData[i * 2 + 1] = lightData[k * 2 + 1];
+									lightData[k * 2] = ux;
+									lightData[k * 2 + 1] = uy;*/
 								}
 
-								vbList.Add( vb );
-							}
+								meshArray = vertices;
 
-							frameList.Add( vbList );
+								List<VertexBuffer> vbList = new();
+
+								// VertexBuffer has limitation (65536), I think max ~862 vertices can be added but coming too much, so need segmentation
+								float[][] subArrays = Enumerable.Range( 0, (int)Math.Ceiling( (float)meshArray.Length / meshBatchSize ) )
+								.Select( i => meshArray.Skip( i * meshBatchSize ).Take( meshBatchSize ).ToArray() ).ToArray(); //.AsParallel()
+
+								var uvIndex = 0;
+								//var lightsIndex = 0;
+
+								for ( var i = 0; i < subArrays.Length; i++ )
+								{
+									var arr = subArrays[i];
+
+									VertexBuffer vb = new();
+									vb.Init( false );
+
+									for ( var j = 0; j < arr.Length / 3; j++ )
+									{
+										Transform tf = new();
+										tf.Rotation = Rotation;
+										tf.Position = Position;
+
+										var vec = tf.TransformVector( new Vector3( arr[j * 3], arr[j * 3 + 1], arr[j * 3 + 2] ) );
+
+										// Finding mins and maxs
+										if ( initializeMinsMaxs )
+										{
+											mins = new Vector3( vec.x, vec.y, vec.z );
+											maxs = new Vector3( vec.x, vec.y, vec.z );
+											initializeMinsMaxs = false;
+										}
+
+										if ( vec.x < mins.x )
+											mins.x = vec.x;
+
+										if ( vec.y < mins.y )
+											mins.y = vec.y;
+
+										if ( vec.z < mins.z )
+											mins.z = vec.z;
+
+										if ( vec.x > maxs.x )
+											maxs.x = vec.x;
+
+										if ( vec.y > maxs.y )
+											maxs.y = vec.y;
+
+										if ( vec.z > maxs.z )
+											maxs.z = vec.z;
+
+										// idk what is lightdata for model, therefore, I was only passed them as Vector4 component, but didn't used anywhere ( lightData[lightsIndex++], lightData[lightsIndex++] )
+										vb.Add( new Vertex( vec, Vector3.Zero, Vector3.Right, new Vector2( uvs[uvIndex++], uvs[uvIndex++] ) ) );
+									}
+
+									vbList.Add( vb );
+								}
+
+								frameList.Add( vbList );
+							}
+							animationList.Add( frameList );
 						}
-						animationList.Add( frameList );
+
+						submodelList.Add( animationList );
+						textures.Add( submodel.Item3 );
+						enabledSubmodel.Add( true );
 					}
-					vertexBuffers.Add( animationList );
-					textures.Add( submodel.Item3 );
-					enabledSubmodels.Add( true );
+					enabledSubmodels.Add( enabledSubmodel );
+					vertexBuffers.Add( submodelList );
+					enabledBodyParts.Add( false );
+				}
+
+				// TODO: get which bodypart get used from entData
+				if( enabledBodyParts.Count > 0)
+				{ 
+					if ( entData.data.TryGetValue( "bodypart", out var bodypart ) && enabledBodyParts.Count > int.Parse(bodypart) ) //custom
+							enabledBodyParts[int.Parse( bodypart )] = true;
+					else
+						enabledBodyParts[0] = true;
 				}
 
 				Bounds = new BBox( mins, maxs );
@@ -265,7 +285,7 @@ namespace MapParser.GoldSrc.Entities
 				ModelBuilder mb = new();
 				List<Mesh> meshList = new();
 
-				for ( int i = 0; i < enabledSubmodels.Count(); i++ )
+				for ( int i = 0; i < enabledSubmodels.Count; i++ )
 				{
 					if ( enabledSubmodels[i] )
 					{
@@ -320,18 +340,24 @@ namespace MapParser.GoldSrc.Entities
 				//Graphics.Attributes.Set( "TextureLightmap", Texture.Transparent );
 				Graphics.Attributes.Set( "Color", renderColor );
 
-				for ( int i = 0; i < enabledSubmodels.Count(); i++ )
+				for ( int i = 0; i < enabledBodyParts.Count; i++ )
 				{
-					if ( enabledSubmodels[i] )
+					if ( !enabledBodyParts[i] )
+						continue;
+
+					for ( int j = 0; j < enabledSubmodels[i].Count; j++ )
 					{
-						Graphics.Attributes.Set( "TextureDiffuse", textures[i] );
+						if ( !enabledSubmodels[i][j] )
+							continue;
+
+						Graphics.Attributes.Set( "TextureDiffuse", textures[j] );
 
 						if ( vertexBuffers == null ) // remove
 						{
 							Delete();
 							return;
 						}
-						var animation = vertexBuffers[i][activeSequence];
+						var animation = vertexBuffers[i][j][activeSequence];
 
 						if ( frameState > animation.Count - 1 )
 							frameState = 0;
@@ -353,7 +379,7 @@ namespace MapParser.GoldSrc.Entities
 		public class MDLEntity_SV : ModelEntity //KeyframeEntity
 		{
 			public MDLEntity_SV() { }
-			public MDLEntity_SV( ref List<(BufferAttribute<float>[][], BufferAttribute<float>, Sandbox.Texture, List<float[]>)> subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings )
+			public MDLEntity_SV( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, Sandbox.Texture, List<float[]>)>> bodyGroups, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings )
 			{
 				// We are using first animation frame of models as physics, in the future.
 				// Because complex models will be trouble for server.
@@ -362,27 +388,32 @@ namespace MapParser.GoldSrc.Entities
 				List<Vector3> vectorList = new();
 				ModelBuilder mb = new();
 
-				foreach ( var submodel in subModels )
+				foreach ( var bodygroup in bodyGroups )
 				{
-					foreach ( var animations in submodel.Item1 )
+					foreach ( var submodel in bodygroup )
 					{
-						foreach ( var frames in animations )
+						foreach ( var animations in submodel.Item1 )
 						{
-							var meshArray = frames.Array.ToArray();
-
-							for ( var i = 0; i < meshArray.Count() / 3; i++ )
+							foreach ( var frames in animations )
 							{
-								vectorList.Add( new Vector3( meshArray[i * 3], meshArray[i * 3 + 1], meshArray[i * 3 + 2] ) + Position );
+								var meshArray = frames.Array.ToArray();
+
+								for ( var i = 0; i < meshArray.Length / 3; i++ )
+								{
+									vectorList.Add( new Vector3( meshArray[i * 3], meshArray[i * 3 + 1], meshArray[i * 3 + 2] ) + Position );
+								}
+								break;
 							}
 							break;
 						}
 						break;
 					}
+					break;
 				}
 
 				List<int> indexList = new List<int>();
 
-				for ( int i = 2; i < vectorList.Count(); i++ )
+				for ( int i = 2; i < vectorList.Count; i++ )
 				{
 					if ( i % 2 == 0 )
 					{

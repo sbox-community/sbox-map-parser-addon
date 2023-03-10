@@ -838,8 +838,6 @@ namespace MapParser.GoldSrc
 				}
 				var package = lightmapPackerPage;
 
-				//Log.Info( "LightMap " + settings.mapName );
-
 				PreparingIndicator.Update("Lightmap");
 				lightmap = MIPTEXData.createLightmap( ref package, ref list, Util.PathToMapName( settings.mapName ));
 			}

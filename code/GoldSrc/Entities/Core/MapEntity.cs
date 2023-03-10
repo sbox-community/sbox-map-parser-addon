@@ -138,7 +138,7 @@ namespace MapParser.GoldSrc.Entities
 				{
 					PreparingIndicator.Update( "Map" );
 
-					Vertex[] vertexs = new Vertex[mesh.Item1.Count()];
+					Vertex[] vertexs = new Vertex[mesh.Item1.Count];
 
 					VertexBuffer buffer = new();
 					buffer.Init( true );
@@ -163,7 +163,7 @@ namespace MapParser.GoldSrc.Entities
 					vertexBufferIndex++;
 				}
 
-				vertexBufferCount = vertexBuffer.Count();
+				vertexBufferCount = vertexBuffer.Count;
 
 				AABB = settings.AABB;
 
@@ -189,8 +189,8 @@ namespace MapParser.GoldSrc.Entities
 				Bounds = new BBox( Mins, Maxs ); // TODO: fix, it causes invisible problem
 
 				PVS = new bool[vertexBuffer.LastOrDefault().Item3 + 1];
-				PVSCount = PVS.Count();
-				leavesCount = leaves.Count();
+				PVSCount = PVS.Length;
+				leavesCount = leaves.Count;
 
 				if ( leavesCount == 0 ) // If VIS not compiled, 
 				{
@@ -268,7 +268,7 @@ namespace MapParser.GoldSrc.Entities
 			{
 				PreparingIndicator.Update("Texture");
 
-				for ( var i = 0; i < vertexBuffer.Count(); i++ )
+				for ( var i = 0; i < vertexBuffer.Count; i++ )
 				{
 					var vb = vertexBuffer[i];
 					if ( key == i )
@@ -351,7 +351,7 @@ namespace MapParser.GoldSrc.Entities
 					var pass = false;
 
 					var freezeIndex = 0;
-					var freezeCount = freeze.Count();
+					var freezeCount = freeze.Count;
 					for ( var i = 0; i < leavesCount; i++ )
 					{
 						var leaf = leaves[i];
@@ -363,7 +363,7 @@ namespace MapParser.GoldSrc.Entities
 						}
 					}
 
-					//DebugOverlay.ScreenText( $"World Meshes: {PVS.Where( x => x == true ).Count()} / {PVSCount}", new Vector2( 10, 30 ), 0f );
+					//DebugOverlay.ScreenText( $"World Meshes: {PVS.Where( x => x == true ).Count} / {PVSCount}", new Vector2( 10, 30 ), 0f );
 					//DebugOverlay.ScreenText( $"Entity Meshes: {currentEntityMeshCount} / {entityMeshCount}", new Vector2( 10, 45 ), 0f );
 
 					if ( !pass )
