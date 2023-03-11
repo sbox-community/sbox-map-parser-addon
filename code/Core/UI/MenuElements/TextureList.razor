@@ -18,8 +18,7 @@
 		width:90%;
 		height: 100%;
 		border-radius: 2px;
-
-		flex-direction: column;
+		flex-direction: row;
 		flex-wrap: nowrap;
 		margin:10px;
 		box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
@@ -81,32 +80,36 @@
 		}
 }
 </style>
-
-<div class="rowHeader">
-	<div class="rowHeader_item">Texture</div>
-	@if (Render.TextureCache.textureData.Count() != 0) {
-		<div style="width:43%" class="rowHeader_item">Size</div>
-	}
-</div>
-<div class="row">
-	@if (Render.TextureCache.textureData.Count() != 0)
-	{
-		@foreach (var textureCacheData in Render.TextureCache.textureData) // Need concurrentDictionary
-		{
-			<div class="rowItem @(selectedData.Equals(textureCacheData.Value))" @onclick=@(() => selectRow(textureCacheData.Value))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(Util.PathToMapNameWithExtension(textureCacheData.Key))</div><div style="width:30%;max-width:30%;min-width:30%;justify-content:center">@(textureCacheData.Value.texture.Width)x@(textureCacheData.Value.texture.Height)</div></div>
+<div style="flex-direction:column">
+	<div class="rowHeader">
+		<div class="rowHeader_item">Texture</div>
+		@if (Render.TextureCache.textureData.Count() != 0) {
+			<div style="width:43%" class="rowHeader_item">Size</div>
 		}
-	}
-	@if (Render.TextureCache.textureData.Count() == 0)
-	{
-		<div class="rowItem" style="justify-content:center">Not Cached Texture Found</div>
-	}
+	</div>
+	<div @ref="list" class="row">
+		@if (Render.TextureCache.textureData.Count() != 0)
+		{
+			@foreach (var textureCacheData in Render.TextureCache.textureData) // Need concurrentDictionary
+			{
+				<div class="rowItem @(selectedData.Equals(textureCacheData.Value))" @onclick=@(() => selectRow(textureCacheData.Value))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(Util.PathToMapNameWithExtension(textureCacheData.Key))</div><div style="width:30%;max-width:30%;min-width:30%;justify-content:center">@(textureCacheData.Value.texture.Width)x@(textureCacheData.Value.texture.Height)</div></div>
+			}
+		}
+		@if (Render.TextureCache.textureData.Count() == 0)
+		{
+			<div class="rowItem" style="justify-content:center">Not Cached Texture Found</div>
+		}
+	</div>
 </div>
+<ScrollBar @ref="scrollBar"></ScrollBar>
 
 @code
 {
 	Render.TextureCacheData selectedData;
 
 	public Panel canvas;
+	Panel list { get; set; }
+	ScrollBar scrollBar { get; set; }
 
 	public override void Tick()
 	{
@@ -128,5 +131,9 @@
 
 		if (Manager.mainMenu != null && Manager.mainMenu.IsValid())
 			(Manager.mainMenu as Menu).selectedWAD = packagedata.WADname;
+	}
+	protected override void OnAfterTreeRender(bool firstTime) {
+		if (firstTime)
+			scrollBar.list = this.list;
 	}
 }

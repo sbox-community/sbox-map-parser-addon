@@ -8,40 +8,76 @@
 @using System.Linq;
 @using System.Threading.Tasks;
 
-
 @namespace MapParser
 @inherits Panel
 
 <style>
-	
+
 	ScrollBar {
 		background: linear-gradient(to bottom, #7f7f7f, #bdbdbd);
-		box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
-		padding:0px 4px 2px 4px;
-		flex-direction:row;
-		border-radius: 2px;
+		box-shadow: 0px 0px 6px 1px rgba(25, 25, 25, 0.5);
+		flex-direction: row;
 		flex-shrink: 0;
-		margin:4px;
-
-		&:hover{
+		width: 1%;
+		height: 100%;
+		
+		&:hover
+		{
 			background: linear-gradient(to top, #bdbdbd);
 		}
-}
+
+		.handle {
+			width: 100%;
+			height: 4%;
+			background: linear-gradient(to bottom, #7f7f7f, #bdbdbd);
+			border-radius: 6px;
+			box-shadow: 0px 0px 3px 2px rgba(25, 25, 25, 0.6);
+			flex-shrink: 0;
+		}
+	}
 </style>
 
-
+<div class="handle" @ref="handle"></div>
 
 @code
 {
-	public ExternalMapList mapList;
-	public override void Tick()
-	{
-		//Log.Info(mapList.rowPanel.ScrollOffset);
+	public Panel list;
+	Panel handle;
+	float oldPos = 0f;
+	public override void Tick() {
 		base.Tick();
+
+		if (list == null || !list.IsValid())
+			return;
+
+		if (Style.Display == DisplayMode.None && list.ScrollSize.y > 1f) {
+			Style.Display = DisplayMode.Flex;
+		}
+		else if (Style.Display != DisplayMode.None && list.ScrollSize.y == 0) {
+			Style.Display = DisplayMode.None;
+		}
+
+		if (this.HasActive) {
+			var yAxis = this.ScreenPositionToPanelDelta(Mouse.Position).y;
+			yAxis = yAxis < 0f ? 0f : yAxis > 1f ? 1f : yAxis; // Lock 0f - 1f
+
+			list.ScrollOffset = new Vector2(0f, (list.ScrollSize.y * yAxis));
+		}
+
+		var newPos = list.ScrollOffset.y * 0.96f; // Because of handle size is overflow
+
+		if (oldPos != newPos) // Avoid unnecessary adjustment
+			oldPos = newPos;
+		else
+			return;
+
+		var fixedPos = newPos / list.ScrollSize.y;
+
+		fixedPos = fixedPos < 0f ? 0f : fixedPos > 1f ? 1f : fixedPos;
+
+		handle.Style.Top = Length.Fraction(fixedPos);
 	}
-	/*protected override int BuildHash()
-	{
-		return HashCode.Combine();
-	}*/
+
+	public void TryToScrollTop() => list.ScrollOffset = Vector2.Zero;
 
 }

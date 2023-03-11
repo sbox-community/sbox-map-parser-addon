@@ -20,7 +20,7 @@
 		min-width:75%;
 		min-height: 30%;
 		max-width:75%;
-		flex-direction: column;
+		flex-direction: row;
 		flex-wrap: nowrap;
 		border-radius: 2px;
 		flex-shrink:0;
@@ -81,28 +81,35 @@
 }
 </style>
 
-<div class="rowHeader">
-	<div class="rowHeader_item">Found Maps</div>
-</div>
-<div class="row">
-	@if (maps.Count() != 0)
-	{
-		@foreach (var infoPackage in maps)
+<div style="flex-direction:column">
+	<div class="rowHeader">
+		<div class="rowHeader_item">Found Maps</div>
+	</div>
+	<div @ref="list" class="row">
+		@if (maps.Count() != 0)
 		{
-			<div class="rowItem @(selectedPackage.Equals(infoPackage))" tooltip=@($"{infoPackage.name}\n\r{infoPackage.desp}\n\rEngine:{infoPackage.engine}\nGame:{infoPackage.game}\nPath:{infoPackage.bsp}\nOffset:{infoPackage.offset}\nAngles:{infoPackage.angles}") @onclick=@(() => selectRow(infoPackage))>@(Util.PathToMapName(infoPackage.bsp))</div>
+			@foreach (var infoPackage in maps)
+			{
+				<div class="rowItem @(selectedPackage.Equals(infoPackage))" tooltip=@($"{infoPackage.name}\n\r{infoPackage.desp}\n\rEngine:{infoPackage.engine}\nGame:{infoPackage.game}\nPath:{infoPackage.bsp}\nOffset:{infoPackage.offset}\nAngles:{infoPackage.angles}") @onclick=@(() => selectRow(infoPackage))>@(Util.PathToMapName(infoPackage.bsp))</div>
+			}
 		}
-	}
-	@if (maps.Count() == 0)
-	{
-		<div class="rowItem">Not Found</div>
-	}
+		@if (maps.Count() == 0)
+		{
+			<div class="rowItem">Not Found</div>
+		}
+	</div>
 </div>
+<ScrollBar @ref="scrollBar"></ScrollBar>
 
 @code
 {
 	public Manager.ContentPackage.PackageInfo? selectedPackage { get; set; }
 
 	public List<Manager.ContentPackage.PackageInfo> maps { get; set; }  = new List<Manager.ContentPackage.PackageInfo>();
+
+	Panel list { get; set; }
+
+	ScrollBar scrollBar { get; set; }
 
 	public override void Tick()
 	{
@@ -115,5 +122,9 @@
 	void selectRow(Manager.ContentPackage.PackageInfo panel)
 	{
 		selectedPackage = panel;
+	}
+	protected override void OnAfterTreeRender(bool firstTime) {
+		if (firstTime)
+			scrollBar.list = this.list;
 	}
 }

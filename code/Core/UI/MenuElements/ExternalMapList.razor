@@ -97,7 +97,7 @@
 	}
 }
 </style>
-<div style="flex-direction:row">>
+<div style="flex-direction:row">
 	<div style="flex-direction:column">
 		<div class="rowHeader">
 			<div class="rowHeader_item">Maps</div>
@@ -126,7 +126,7 @@
 		}
 		</div>
 	</div>
-	<ScrollBar @ref="scrollBar" style="position:absolute;width:3%;height:100%;background-color:red"></ScrollBar>
+	<ScrollBar @ref="scrollBar" style="height:93%;"></ScrollBar>
 </div>
 @code
 {
@@ -136,7 +136,7 @@
 
 	public List<string> maps { get; set; }  = new List<string>();
 	public Panel rowPanel { get; set; }
-	public ScrollBar scrollBar { get; set; }
+	ScrollBar scrollBar { get; set; }
 
 	public override void Tick()
 	{
@@ -151,11 +151,11 @@
 		if (selectedmap != "Loading..")
 			selectedMap = selectedmap;
 	}
-	public void changePage(int i) => page = i;
+	public void changePage(int i) => page = i; //scrollBar.TryToScrollTop();
 
 	protected override void OnAfterTreeRender(bool firstTime) {
 		if (firstTime) {
-			scrollBar.mapList = this;
+			scrollBar.list = this.rowPanel;
 		}
 	}
 }
