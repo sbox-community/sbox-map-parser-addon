@@ -16,7 +16,7 @@ namespace MapParser.GoldSrc.Entities
 		public MDLEntity_SV SV;
 		public MDLEntity_CL CL;
 
-		public static MDLEntity Create( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, Sandbox.Texture, List<float[]>)>> subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
+		public static MDLEntity Create( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Sandbox.Texture, List<float[]>)>> subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
 		{
 			MDLEntity ent = new MDLEntity();
 
@@ -57,7 +57,8 @@ namespace MapParser.GoldSrc.Entities
 			List<List<List<List<List<VertexBuffer>>>>> vertexBuffers = new();
 			private static Material renderMat = Material.FromShader( "shaders/goldsrc_model_render.shader" );
 			List<Sandbox.Texture> textures = new();
-			public List<List<bool>> enabledSubmodels = new();
+			List<List<bool>> enabledSubmodels = new(); // Contains submodel meshes
+			List<List<int>> enabledMeshes = new(); // Contains submodel mesh map
 			public List<bool> enabledBodyParts = new(); // TODO: only one bodypart can be enabled
 			public int activeSequence = 0;
 			public float frameRate = 60.0f;  //60fps, added fps from entity but is fps from sequences (or from header) needed?, is it needed bbmax bbmin for physics?
@@ -70,7 +71,7 @@ namespace MapParser.GoldSrc.Entities
 			public MDLEntity_SV parent;
 			//private Texture lightmap;
 
-			public MDLEntity_CL( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, Sandbox.Texture, List<float[]>)>> bodyParts, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities ) : base( settings.sceneWorld )
+			public MDLEntity_CL( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Sandbox.Texture, List<float[]>)>> bodyParts, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities ) : base( settings.sceneWorld )
 			{
 				Flags.IsOpaque = true;
 				Flags.IsTranslucent = false;
@@ -142,6 +143,7 @@ namespace MapParser.GoldSrc.Entities
 				{
 					List< List < List <List<VertexBuffer>>>> submodelList = new();
 					List<bool> enabledSubmodel = new();
+					List<int> enabledMesh = new();
 
 					foreach ( var submodel in bodypart )
 					{
@@ -260,10 +262,12 @@ namespace MapParser.GoldSrc.Entities
 						}
 
 						submodelList.Add( animationList );
-						textures.Add( submodel.Item3 );
-						enabledSubmodel.Add( true );
+						textures.Add( submodel.Item4 );
+						enabledSubmodel.Add( false );
+						enabledMesh.Add( submodel.Item3 );
 					}
 					enabledSubmodels.Add( enabledSubmodel );
+					enabledMeshes.Add( enabledMesh );
 					vertexBuffers.Add( submodelList );
 					enabledBodyParts.Add( false );
 				}
@@ -277,7 +281,67 @@ namespace MapParser.GoldSrc.Entities
 						enabledBodyParts[0] = true;
 				}
 
+				// TODO: get which submodels get used from entData
+
+				if ( entData.data.TryGetValue( "submodel", out var submodelVal ) && enabledBodyParts.Count > int.Parse( submodelVal ) ) //custom
+					ChangeSubmodel( int.Parse( submodelVal ) );
+				else
+					ChangeSubmodel( 0 );
+
 				Bounds = new BBox( mins, maxs );
+			}
+
+			int GetActiveBodyPartIndex() {
+
+				for ( int i = 0; i < enabledBodyParts.Count; i++ )
+					if ( enabledBodyParts[i] )
+						return i;
+
+				return -1; // Give error notify
+			}
+
+			public void ChangeSubmodel( int subModelIndex )
+			{
+				var bodyPartIndex = GetActiveBodyPartIndex();
+
+				// submodelIndexWithMeshes, meshCount, submodelIndex
+				List<(int,int,int)> subModelList = new();
+
+				var index = 0;
+				var subModelind = 0;
+				for ( var i = 0; i < enabledMeshes[bodyPartIndex].Count; i++ )
+				{
+					if( index == 0 )
+					{
+						index = enabledMeshes[bodyPartIndex][i];
+						subModelList.Add( (i,index, subModelind++) );
+					}
+					index--;
+				}
+
+				foreach( var subModel in subModelList )
+					for (var i = subModel.Item1;i < subModel.Item1+subModel.Item2;i++ )
+						enabledSubmodels[bodyPartIndex][i] = subModel.Item3 == subModelIndex;
+			}
+
+			public List<bool> GetSubModels()
+			{
+				var bodyPartIndex = GetActiveBodyPartIndex();
+
+				// submodelIndexWithMeshes, meshCount, submodelIndex
+				List<bool> subModelList = new();
+
+				var index = 0;
+				for ( var i = 0; i < enabledMeshes[bodyPartIndex].Count; i++ )
+				{
+					if ( index == 0 )
+					{
+						index = enabledMeshes[bodyPartIndex][i];
+						subModelList.Add( enabledSubmodels[bodyPartIndex][i] );
+					}
+					index--;
+				}
+				return subModelList;
 			}
 
 			/*public Model createModelForMV()
@@ -379,7 +443,7 @@ namespace MapParser.GoldSrc.Entities
 		public class MDLEntity_SV : ModelEntity //KeyframeEntity
 		{
 			public MDLEntity_SV() { }
-			public MDLEntity_SV( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, Sandbox.Texture, List<float[]>)>> bodyGroups, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings )
+			public MDLEntity_SV( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Sandbox.Texture, List<float[]>)>> bodyGroups, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings )
 			{
 				// We are using first animation frame of models as physics, in the future.
 				// Because complex models will be trouble for server.

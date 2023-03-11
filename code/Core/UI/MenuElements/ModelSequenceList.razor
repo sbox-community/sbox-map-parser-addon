@@ -96,7 +96,7 @@
 	@if (selectedModelEntity is not null && MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.TryGetValue(selectedModel, out var data)) {
 		@for (var i = 0; i < data.Item2.sequences.Count(); i++)
 		{
-			<div class="rowItem @(selectedModelEntity?.activeSequence == i)" @onclick=@((int i) => selectRow(i, data.Item2.sequences[i]))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(data.Item2.sequences[i].label)</div></div>
+			<div i=@(i) label=@(data.Item2.sequences[i].label) class="rowItem @(selectedModelEntity?.activeSequence == i)" @onclick=@((PanelEvent e) => selectRow(e.This))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(data.Item2.sequences[i].label)</div></div>
 		}
 	}
 	@if (selectedModelEntity is null) {
@@ -121,11 +121,11 @@
 	{
 		return HashCode.Combine(selectedData, selectedModel);
 	}
-	void selectRow( int i, GoldSrc.Entities.Structs.SeqDesc sequence ) {
+	void selectRow( Panel panel ) {
 		if (selectedModelEntity is not null) {
-			selectedModelEntity.activeSequence = i;
+			selectedModelEntity.activeSequence = int.Parse(panel.GetAttribute("i"));
 
-			selectedData = sequence.label;
+			selectedData = panel.GetAttribute("label");
 		}
 
 	}

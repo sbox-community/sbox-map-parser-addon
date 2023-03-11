@@ -18,7 +18,7 @@ namespace MapParser.GoldSrc.Entities
 	public static class ModelRenderer
 	{
 		// TODO: convert to struct
-		public static Dictionary<string, (List<List<(BufferAttribute<float>[][], BufferAttribute<float>, Texture, List<float[]>)>>, ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MDLEntity)> ModelCache = new();
+		public static Dictionary<string, (List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Texture, List<float[]>)>>, ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MDLEntity)> ModelCache = new();
 
 		public static void clearModelCache()
 		{
@@ -119,7 +119,7 @@ namespace MapParser.GoldSrc.Entities
 			return modelMeshes.ToArray();
 		}*/
 
-		public static List<List<(BufferAttribute<float>[][], BufferAttribute<float>, Texture, List<float[]>)>>  CreateModelEntity( ref MeshRenderData[][][] meshesRenderData, ModelDataParser.ModelParser modelData, ref List<ushort[]> textureBuffers, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
+		public static List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Texture, List<float[]>)>>  CreateModelEntity( ref MeshRenderData[][][] meshesRenderData, ModelDataParser.ModelParser modelData, ref List<ushort[]> textureBuffers, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
 		{
 			List<Texture> textures = new();
 			if (Game.IsClient) { 
@@ -127,12 +127,12 @@ namespace MapParser.GoldSrc.Entities
 					return TextureCache.addTexture( textureBuffer.Select( x => (byte)x ).ToArray(), $"{modelData.header.name}_{textureIndex}" , modelData.textures[textureIndex].width, modelData.textures[textureIndex].height, Util.PathToMapNameWithExtension(modelData.header.name) ); //Sandbox.Texture.Create( modelData.textures[textureIndex].width, modelData.textures[textureIndex].height ).WithData( textureBuffer.Select( x => (byte)x ).ToArray() ).Finish();
 				} ).ToList();
 			}
-			List<List<(BufferAttribute<float>[][], BufferAttribute<float>, Texture, List<float[]>)>> meshes = new(); //BufferAttribute<float>,
+			List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Texture, List<float[]>)>> meshes = new(); //BufferAttribute<float>,
 			for ( int bodyPartIndex = 0; bodyPartIndex < meshesRenderData.Length; bodyPartIndex++ )
 			{
+				List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Texture, List<float[]>)> submodels = new();
 				for ( int subModelIndex = 0; subModelIndex < meshesRenderData[bodyPartIndex].Length; subModelIndex++ )
 				{
-					List<(BufferAttribute<float>[][], BufferAttribute<float>, Texture, List<float[]>)> submodels = new();
 					var i = 0;
 					foreach ( MeshRenderData subModel in meshesRenderData[bodyPartIndex][subModelIndex] )
 					{
@@ -142,11 +142,10 @@ namespace MapParser.GoldSrc.Entities
 						int skinRef = modelData.meshes[bodyPartIndex][subModelIndex][i++].skinRef;
 						int textureIndex = modelData.skinRef.Count() <= skinRef ? -1 : modelData.skinRef[skinRef];
 
-						submodels.Add( (geometryBuffers, uvMap, Game.IsClient ? (textureIndex == -1 ? null : textures[textureIndex]) : null, subModel.collisionMeshData) ); //lightData, 
+						submodels.Add( (geometryBuffers, uvMap, meshesRenderData[bodyPartIndex][subModelIndex].Length, Game.IsClient ? (textureIndex == -1 ? null : textures[textureIndex]) : null, subModel.collisionMeshData) ); //lightData, 
 					}
-					meshes.Add( submodels );
 				}
-
+				meshes.Add( submodels );
 			}
 			return meshes;
 		}

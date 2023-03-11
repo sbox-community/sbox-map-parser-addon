@@ -96,7 +96,7 @@
 	@if (selectedModelEntity is not null && MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.TryGetValue(selectedModel, out var data)) {
 		@for (var i = 0; i < data.Item2.bodyParts.Count(); i++)
 		{
-			<div class="rowItem @(selectedModelEntity?.enabledSubmodels[i])" @onclick=@((int i) => selectRow(i, data.Item2.bodyParts[i]))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(data.Item2.bodyParts[i].name)</div></div>
+			<div i=@(i) name=@(data.Item2.bodyParts[i].name) class="rowItem @(selectedModelEntity?.enabledBodyParts[i])" @onclick=@((PanelEvent e) => selectRow(e.This))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(data.Item2.bodyParts[i].name)</div></div>
 		}
 	}
 	@if (selectedModelEntity is null) {
@@ -124,13 +124,13 @@
 	{
 		return HashCode.Combine(selectedData, selectedModel);
 	}
-	void selectRow( int i, GoldSrc.Entities.Structs.BodyPart bodypart ) 
+	void selectRow( Panel panel ) 
 	{
-		
+		var i = int.Parse(panel.GetAttribute("i"));
 		for (var j = 0; j < selectedModelEntity?.enabledBodyParts.Count; j++)
 			selectedModelEntity.enabledBodyParts[j] = j == i;
 
 		selectedBodyPart = i;
-		selectedData = bodypart.name;
+		selectedData = panel.GetAttribute("name");
 	}
 }
