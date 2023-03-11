@@ -18,6 +18,18 @@ namespace MapParser.SourceEngine
 	{
 		const float DEG_TO_RAD = 0.017453292519943295f; // Math.PI / 180,
 
+		public enum GenericShaderType
+		{
+			LightmappedGeneric,
+			VertexLitGeneric,
+			UnlitGeneric,
+			WorldVertexTransition,
+			Skin,
+			Black,
+			DecalModulate,
+			Sprite,
+			Unknown,
+		}
 
 		private static Color scratchColor = new Color( 255, 255, 255, 255 );
 		/*private static readonly TextureMapping[] textureMappings = Enumerable.Range( 0, 15 ).Select( i => new TextureMapping() ).ToArray();
@@ -80,7 +92,7 @@ namespace MapParser.SourceEngine
 
 			public FogParams( Color? color = null )
 			{
-				this.color =  color is not null ? color.Value : Color.White ; //colorNewCopy
+				this.color = color is not null ? color.Value : Color.White; //colorNewCopy
 			}
 
 			public void copy( FogParams o )
@@ -105,7 +117,7 @@ namespace MapParser.SourceEngine
 		public class Parameter
 		{
 			public virtual void Parse( string s ) { }
-			public virtual Parameter Index( int i )	{ throw new Exception( "whoops" ); }
+			public virtual Parameter Index( int i ) { throw new Exception( "whoops" ); }
 			public virtual void Set( Parameter param ) { }
 		}
 
@@ -135,12 +147,12 @@ namespace MapParser.SourceEngine
 			public override void Set( Parameter param )
 			{
 				//Debug.Assert( param is ParameterNumber );
-				if( param is not ParameterNumber )
+				if ( param is not ParameterNumber )
 				{
 					return; // HATA
 				}
 				//Debug.Assert( this.dynamic );
-				if( !this.dynamic )
+				if ( !this.dynamic )
 				{
 					return; //HATA
 				}
@@ -163,14 +175,14 @@ namespace MapParser.SourceEngine
 			public float animationStartTime = 0;
 			public int textureFrameIndex = 0;
 			public Color blendColor = Color.White;//ColorNewCopy( White );
-			//public LightCache lightCache = null;
+												  //public LightCache lightCache = null;
 			public float randomNumber = (float)new Random().NextDouble();
 		}
 
-		
 
 
-	
+
+
 
 		public class ParameterTexture : Parameter
 		{
@@ -179,7 +191,7 @@ namespace MapParser.SourceEngine
 
 			public string Ref { get; set; } = null;
 
-			public bool IsSRGB { get; }
+			public bool IsSRGB { get; set; }
 
 			public bool IsEnvmap { get; }
 
@@ -219,7 +231,8 @@ namespace MapParser.SourceEngine
 						{
 							filename = entityParams.LightCache.EnvCubemap.Filename;
 						}
-						else */if ( materialCache.IsUsingHDR() )
+						else */
+						if ( materialCache.IsUsingHDR() )
 						{
 							string hdrFilename = $"{filename}.hdr";
 							if ( materialCache.CheckVTFExists( hdrFilename ) )
@@ -269,7 +282,7 @@ namespace MapParser.SourceEngine
 			public void SetArray( float[] v )
 			{
 				//Debug.Assert( internalArr.Length == v.Length );
-				if( internalArr.Length != v.Length )
+				if ( internalArr.Length != v.Length )
 				{
 					return; //HATA
 				}
@@ -334,7 +347,7 @@ namespace MapParser.SourceEngine
 			public void MulColor( Color c )
 			{
 				//Debug.Assert( internalArr.Length == 3 );
-				if( internalArr.Length != 3 )
+				if ( internalArr.Length != 3 )
 				{
 					return; //HATA
 				}
@@ -355,10 +368,10 @@ namespace MapParser.SourceEngine
 			public ParameterColor( float r, float g = 0.0f, float b = 0.0f ) : base( 3 )
 			{
 				this.internalArr[0].value = r;
-				 this.internalArr[1].value = g;
-				  this.internalArr[2].value = b;
-			 }
-	}
+				this.internalArr[1].value = g;
+				this.internalArr[2].value = b;
+			}
+		}
 
 		public static Parameter createParameterAuto( object value )
 		{
@@ -419,7 +432,7 @@ namespace MapParser.SourceEngine
 			return key;
 		}
 
-		public static void SetupParametersFromVMT( Dictionary<string, Parameter> param, Dictionary<string,object> vmt, List<string> defines ) //VMT vmt
+		public static void SetupParametersFromVMT( Dictionary<string, Parameter> param, Dictionary<string, object> vmt, List<string> defines ) //VMT vmt
 		{
 			foreach ( KeyValuePair<string, object> vmtKey in vmt )
 			{
@@ -514,7 +527,7 @@ namespace MapParser.SourceEngine
 				matrix.M24 = -cy;
 				matrix.M11 = sx;
 				matrix.M22 = sy;
-				matrix *= Matrix4x4.CreateFromAxisAngle( Vector3.Up, 0.017453292519943295f * r  ); // fix
+				matrix *= Matrix4x4.CreateFromAxisAngle( Vector3.Up, 0.017453292519943295f * r ); // fix
 				var scratchMat4a = Matrix4x4.Identity;
 				scratchMat4a.M14 = cx + tx;
 				scratchMat4a.M24 = cy + ty;
@@ -622,7 +635,7 @@ namespace MapParser.SourceEngine
 			protected Vector2 texCoord0Scale = Vector2.Zero;
 			protected bool isAdditive = false;
 			protected bool isToneMapped = true;
-			private VMT vmt;
+			protected VMT vmt;
 
 			public BaseMaterial( VMT vmt )
 			{
@@ -648,7 +661,7 @@ namespace MapParser.SourceEngine
 				return this.loaded;
 			}
 
-			protected void InitParameters()
+			protected virtual void InitParameters()
 			{
 				var p = param;
 
@@ -690,7 +703,7 @@ namespace MapParser.SourceEngine
 					SetupParametersFromVMT( this.param.value, fallback, materialDefines );
 			}
 
-			protected void InitStaticBeforeResourceFetch()
+			protected virtual void InitStaticBeforeResourceFetch()
 			{
 			}
 			private Dictionary<string, object> findFallbackBlock( string shaderTypeName, List<string> materialDefines )
@@ -733,7 +746,7 @@ namespace MapParser.SourceEngine
 			{
 				return (this.param.value[name] as ParameterBoolean).getBool();
 			}
-			public void SetStaticLightingMode( StaticLightingMode staticLightingMode )
+			public virtual void SetStaticLightingMode( StaticLightingMode staticLightingMode )
 			{
 				// Nothing by default.
 			}
@@ -797,22 +810,22 @@ namespace MapParser.SourceEngine
 			{
 				var m = (this.param.value[name] as ParameterVector).internalArr;
 				//Debug.Assert(m.Length == 4);
-				if( m.Length != 4 )
+				if ( m.Length != 4 )
 				{
 					return -1; //HATA
 				}
-				return Util.FillVec4(ref d, offs, m[0].value, m[1].value, m[2].value, m[3].value);
+				return Util.FillVec4( ref d, offs, m[0].value, m[1].value, m[2].value, m[3].value );
 			}
 			protected int paramFillScaleBias( float[] d, int offs, string name )
 			{
 				var m = (this.param.value[name] as ParameterMatrix).matrix;
 				// Make sure there's no rotation. We should definitely handle this eventually, though.
 				//Debug.Assert( m.M12 == 0f && m.M13 == 0f );
-				if( m.M12 != 0f || m.M13 != 0f )
+				if ( m.M12 != 0f || m.M13 != 0f )
 				{
 					return -1; //HATA
 				}
-					float scaleS = m.M11 * this.texCoord0Scale.x;
+				float scaleS = m.M11 * this.texCoord0Scale.x;
 				float scaleT = m.M22 * this.texCoord0Scale.y;
 				float transS = m.M41;
 				float transT = m.M42;
@@ -1162,7 +1175,761 @@ namespace MapParser.SourceEngine
 			{
 			}
 		}
-		
+
+
+
+
+
+
+
+
+
+
+		//Fix
+		class UberShaderInstanceBasic
+		{
+			public bool SetDefineBool(string str, bool boolean) { return false; }
+			public bool SetDefineString(string str1, string str2) { return false; }
+		}
+
+
+
+		class Material_Generic : BaseMaterial
+		{
+			private bool wantsTreeSway = false;
+			private bool wantsDetail = false;
+			private bool wantsBaseTexture2 = false;
+			private bool wantsDecal = false;
+			private bool wantsBumpmap = false;
+			private bool wantsBumpmap2 = false;
+			private bool wantsEnvmapMask = false;
+			private bool wantsEnvmap = false;
+			private bool wantsSelfIllum = false;
+			private bool wantsSelfIllumFresnel = false;
+			private bool wantsBlendModulate = false;
+			private bool wantsPhong = false;
+			private bool wantsPhongExponentTexture = false;
+			private bool wantsDynamicLighting = false;
+			private bool wantsAmbientCube = false;
+			private bool wantsProjectedTexture = false;
+			private GenericShaderType shaderType;
+			private int objectParamsWordCount = 0;
+
+			//private UberShaderInstanceBasic shaderInstance;
+			private UberShaderInstanceBasic shaderInstance;
+			//private GfxProgram gfxProgram = null;
+			//private Partial<GfxMegaStateDescriptor> megaStateFlags = new Partial<GfxMegaStateDescriptor>();
+			private ulong sortKeyBase = 0;
+			//private ProjectedLight projectedLight = null;
+
+			public Material_Generic( VMT vmt ): base (vmt)
+			{
+
+			}
+
+			public override void SetStaticLightingMode( StaticLightingMode staticLightingMode )
+			{
+				bool wantsStaticVertexLighting;
+				bool wantsDynamicVertexLighting;
+				bool wantsDynamicPixelLighting;
+
+				bool isStudioVertexLighting = staticLightingMode == StaticLightingMode.StudioVertexLighting || staticLightingMode == StaticLightingMode.StudioVertexLighting3;
+				bool isStudioVertexLighting3 = staticLightingMode == StaticLightingMode.StudioVertexLighting3;
+				bool isStudioAmbientCube = staticLightingMode == StaticLightingMode.StudioAmbientCube;
+
+				if ( this.shaderType == GenericShaderType.VertexLitGeneric )
+				{
+					wantsStaticVertexLighting = isStudioVertexLighting;
+					this.wantsAmbientCube = isStudioAmbientCube;
+					wantsDynamicVertexLighting = isStudioAmbientCube;
+					wantsDynamicPixelLighting = false;
+				}
+				else if ( this.shaderType == GenericShaderType.Skin )
+				{
+					wantsStaticVertexLighting = isStudioVertexLighting;
+					this.wantsAmbientCube = isStudioAmbientCube;
+					wantsDynamicVertexLighting = false;
+					wantsDynamicPixelLighting = true;
+				}
+				else
+				{
+					wantsStaticVertexLighting = false;
+					this.wantsAmbientCube = false;
+					wantsDynamicVertexLighting = false;
+					wantsDynamicPixelLighting = false;
+				}
+
+				this.wantsDynamicLighting = wantsDynamicVertexLighting || wantsDynamicPixelLighting;
+
+				// Ensure that we never have a lightmap at the same time as "studio model" lighting, as they're exclusive...
+				if ( wantsStaticVertexLighting || this.wantsDynamicLighting || this.wantsAmbientCube )
+				{
+					if ( this.wantsLightmap )
+						Log.Error( "Error" ); //HATA
+				}
+
+				bool changed = false;
+				changed = this.shaderInstance.SetDefineBool( "USE_STATIC_VERTEX_LIGHTING", wantsStaticVertexLighting ) || changed;
+				changed = this.shaderInstance.SetDefineBool( "USE_STATIC_VERTEX_LIGHTING_3", isStudioVertexLighting3 ) || changed;
+				changed = this.shaderInstance.SetDefineBool( "USE_DYNAMIC_VERTEX_LIGHTING", wantsDynamicVertexLighting ) || changed;
+				changed = this.shaderInstance.SetDefineBool( "USE_DYNAMIC_PIXEL_LIGHTING", wantsDynamicPixelLighting ) || changed;
+				changed = this.shaderInstance.SetDefineBool( "USE_DYNAMIC_LIGHTING", this.wantsDynamicLighting ) || changed;
+				changed = this.shaderInstance.SetDefineBool( "USE_AMBIENT_CUBE", this.wantsAmbientCube ) || changed;
+
+				//if ( changed )
+				//	this.gfxProgram = null;
+			}
+			
+
+			protected override void InitParameters()
+			{
+				base.InitParameters();
+
+				string shaderTypeStr = this.vmt._Root.ToLower();
+				if ( shaderTypeStr == "lightmappedgeneric" )
+					this.shaderType = GenericShaderType.LightmappedGeneric;
+				else if ( shaderTypeStr == "vertexlitgeneric" )
+					this.shaderType = GenericShaderType.VertexLitGeneric;
+				else if ( shaderTypeStr == "unlitgeneric" )
+					this.shaderType = GenericShaderType.UnlitGeneric;
+				else if ( shaderTypeStr == "worldvertextransition" )
+					this.shaderType = GenericShaderType.WorldVertexTransition;
+				else if ( shaderTypeStr == "black" )
+					this.shaderType = GenericShaderType.Black;
+				else if ( shaderTypeStr == "decalmodulate" )
+					this.shaderType = GenericShaderType.DecalModulate;
+				else if ( shaderTypeStr == "sprite" )
+					this.shaderType = GenericShaderType.Sprite;
+				else
+					this.shaderType = GenericShaderType.Unknown;
+
+				var p = this.param.value;
+
+				// Generic
+				p["$envmap"] = new ParameterTexture( true, true );
+				p["$envmapframe"] = new ParameterNumber( 0 );
+				p["$envmapmask"] = new ParameterTexture();
+				p["$envmapmaskframe"] = new ParameterNumber( 0 );
+				p["$envmapmasktransform"] = new ParameterMatrix();
+				p["$envmaptint"] = new ParameterColor( 1, 1, 1 );
+				p["$envmapcontrast"] = new ParameterNumber( 0 );
+				p["$envmapsaturation"] = new ParameterNumber( 1 );
+				p["$envmaplightscale"] = new ParameterNumber( 0 );
+				p["$fresnelreflection"] = new ParameterNumber( 1 );
+				p["$detail"] = new ParameterTexture();
+				p["$detailframe"] = new ParameterNumber( 0 );
+				p["$detailblendmode"] = new ParameterNumber( 0, false );
+				p["$detailblendfactor"] = new ParameterNumber( 1 );
+				p["$detailtint"] = new ParameterColor( 1, 1, 1 );
+				p["$detailscale"] = new ParameterNumber( 4 );
+				p["$detailtexturetransform"] = new ParameterMatrix();
+				p["$bumpmap"] = new ParameterTexture();
+				p["$bumpframe"] = new ParameterNumber( 0 );
+				p["$bumptransform"] = new ParameterMatrix();
+				p["$bumpmap2"] = new ParameterTexture();
+				p["$bumpframe2"] = new ParameterNumber( 0 );
+				p["$bumptransform2"] = new ParameterMatrix();
+				p["$bumpmask"] = new ParameterTexture();
+				p["$alphatestreference"] = new ParameterNumber( 0.7f );
+				p["$nodiffusebumplighting"] = new ParameterBoolean( false, false );
+				p["$ssbump"] = new ParameterBoolean( false, false );
+				p["$halflambert"] = new ParameterBoolean( false, false );
+				p["$selfillumtint"] = new ParameterColor( 1, 1, 1 );
+				p["$selfillummask"] = new ParameterTexture( false, false );
+				p["$selfillumfresnel"] = new ParameterBoolean( false, false );
+				p["$selfillumfresnelminmaxexp"] = new ParameterVector( 3 );
+				p["$decaltexture"] = new ParameterTexture();
+				p["$decalblendmode"] = new ParameterNumber( -1, false );
+				p["$basetexture2"] = new ParameterTexture( true );
+				p["$frame2"] = new ParameterNumber( 0.0f );
+				p["$blendmodulatetexture"] = new ParameterTexture( true );
+				p["$blendmasktransform"] = new ParameterMatrix();
+				p["$seamless_base"] = new ParameterBoolean( false, false );
+				p["$seamless_detail"] = new ParameterBoolean( false, false );
+				p["$seamless_scale"] = new ParameterNumber( 0.0f );
+				p["$phong"] = new ParameterBoolean( false, false );
+				p["$phongboost"] = new ParameterNumber( 1.0f );
+				p["$phongtint"] = new ParameterColor( 1, 1, 1 );
+				p["$phongalbedoboost"] = new ParameterNumber( 1.0f );
+				p["$phongalbedotint"] = new ParameterBoolean( false, false );
+				p["$phongexponent"] = new ParameterNumber( 5.0f );
+				p["$phongexponenttexture"] = new ParameterTexture( false );
+				p["$phongexponentfactor"] = new ParameterNumber( 149.0f );
+				p["$phongfresnelranges"] = new ParameterVector( 3 );
+				p["$basemapalphaphongmask"] = new ParameterBoolean( false, false );
+				p["$invertphongmask"] = new ParameterBoolean( false, false );
+				p["$spriteorientation"] = new ParameterString( "parallel_upright" );
+				p["$spriteorigin"] = new ParameterVector( 2, new float[] { 0.5f, 0.5f } );
+				p["$treesway"] = new ParameterBoolean( false, false );
+				p["$treeswayheight"] = new ParameterNumber( 1000.0f );
+				p["$treeswaystartheight"] = new ParameterNumber( 0.2f );
+				p["$treeswayradius"] = new ParameterNumber( 300.0f );
+				p["$treeswaystartradius"] = new ParameterNumber( 0.1f );
+				p["$treeswayspeed"] = new ParameterNumber( 1.0f );
+				p["$treeswayspeedhighwindmultiplier"] = new ParameterNumber( 2.0f );
+				p["$treeswayspeedstrength"] = new ParameterNumber( 10.0f );
+				p["$treeswayspeedscrumblespeed"] = new ParameterNumber( 0.1f );
+				p["$treeswayspeedscrumblestrength"] = new ParameterNumber( 0.1f );
+				p["$treeswayspeedscrumblefrequency"] = new ParameterNumber( 0.1f );
+				p["$treeswayfalloffexp"] = new ParameterNumber( 1.5f );
+				p["$treeswayscrumblefalloffexp"] = new ParameterNumber( 1.0f );
+				p["$treeswayspeedlerpstart"] = new ParameterNumber( 3.0f );
+				p["$treeswayspeedlerpend"] = new ParameterNumber( 6.0f );
+				p["$treeswaystatic"] = new ParameterBoolean( false, false );
+
+
+			}
+
+			/*private void RecacheProgram( GfxRenderCache cache )
+			{
+				if ( gfxProgram == null )
+				{
+					gfxProgram = shaderInstance.GetGfxProgram( cache );
+					sortKeyBase = SetSortKeyProgramKey( sortKeyBase, gfxProgram.ResourceUniqueId );
+				}
+			}*/
+
+			protected override void InitStaticBeforeResourceFetch()
+			{
+				// The detailBlendMode parameter determines whether we load an SRGB texture or not.
+				float detailBlendMode = paramGetNumber( "$detailblendmode" );
+				ParamGetTexture( "$detail" ).IsSRGB = (detailBlendMode == 1);
+
+				// The detailBlendMode parameter determines whether we load an SRGB texture or not.
+				float decalBlendMode = paramGetNumber( "$decalblendmode" );
+				ParamGetTexture( "$decaltexture" ).IsSRGB = (decalBlendMode == 0);
+
+				// decalmodulate doesn't load basetexture as sRGB.
+				if ( shaderType == GenericShaderType.DecalModulate )
+				{
+					ParamGetTexture( "$basetexture" ).IsSRGB = false;
+				}
+
+				// In some world materials, $envmap is incorrectly set up and isn't overridden correctly.
+				// In these cases, just replace it with a null texture.
+				// Simple example: Portal 1's observationwall_001b.vmt overrides in escape_01
+				if ( shaderType == GenericShaderType.LightmappedGeneric && ParamGetTexture( "$envmap" ).Ref == "env_cubemap" )
+				{
+					ParamGetTexture( "$envmap" ).Ref = null;
+				}
+			}
+
+
+			protected override void InitStatic( MaterialCache materialCache )
+			{
+				base.InitStatic( materialCache );
+
+				this.shaderInstance = new UberShaderInstanceBasic();// materialCache.shaderTemplates.Generic );
+
+				if ( this.shaderType == GenericShaderType.LightmappedGeneric || this.shaderType == GenericShaderType.WorldVertexTransition )
+				{
+					this.wantsLightmap = true;
+					this.shaderInstance.SetDefineBool( "USE_LIGHTMAP", true );
+				}
+
+				if ( this.shaderType == GenericShaderType.WorldVertexTransition )
+				{
+					this.wantsBaseTexture2 = true;
+					this.shaderInstance.SetDefineBool( "USE_BASETEXTURE2", true );
+				}
+
+				if ( this.wantsBaseTexture2 && this.ParamGetVTF( "$blendmodulatetexture" ) != null )
+				{
+					this.wantsBlendModulate = true;
+					this.shaderInstance.SetDefineBool( "USE_BLEND_MODULATE", true );
+				}
+
+				if ( this.shaderType == GenericShaderType.VertexLitGeneric && this.paramGetBoolean( "$phong" ) )
+				{
+					// $phong on a vertexlitgeneric tells it to use the Skin shader instead.
+					this.shaderType = GenericShaderType.Skin;
+					this.wantsPhong = true;
+					this.shaderInstance.SetDefineBool( "USE_PHONG", true );
+
+					if ( this.ParamGetVTF( "$phongexponenttexture" ) != null )
+					{
+						this.wantsPhongExponentTexture = true;
+						this.shaderInstance.SetDefineBool( "USE_PHONG_EXPONENT_TEXTURE", true );
+						this.shaderInstance.SetDefineBool( "USE_PHONG_ALBEDO_TINT", this.paramGetBoolean( "$phongalbedotint" ) );
+					}
+				}
+
+
+
+				if ( this.paramGetBoolean( "$treesway" ) )
+				{
+					this.wantsTreeSway = true;
+					this.shaderInstance.SetDefineBool( "USE_TREE_SWAY", true );
+				}
+
+				if ( this.ParamGetVTF( "$detail" ) != null )
+				{
+					this.wantsDetail = true;
+					this.shaderInstance.SetDefineBool( "USE_DETAIL", true );
+					var detailBlendMode = this.paramGetNumber( "$detailblendmode" );
+					this.shaderInstance.SetDefineString( "DETAIL_BLEND_MODE", "" + detailBlendMode );
+				}
+				else
+				{
+					this.shaderInstance.SetDefineString( "DETAIL_BLEND_MODE", "-1" );
+				}
+
+				if ( this.ParamGetVTF( "$bumpmap" ) != null )
+				{
+					this.wantsBumpmap = true;
+					this.shaderInstance.SetDefineBool( "USE_BUMPMAP", true );
+					var wantsDiffuseBumpmap = !this.paramGetBoolean( "$nodiffusebumplighting" );
+					this.shaderInstance.SetDefineBool( "USE_DIFFUSE_BUMPMAP", wantsDiffuseBumpmap );
+					this.wantsBumpmappedLightmap = wantsDiffuseBumpmap;
+
+					if ( this.ParamGetVTF( "$bumpmap2" ) != null )
+					{
+						this.wantsBumpmap2 = true;
+						this.shaderInstance.SetDefineBool( "USE_BUMPMAP2", true );
+
+						if ( this.ParamGetVTF( "$bumpmask" ) != null )
+							this.shaderInstance.SetDefineBool( "USE_BUMPMASK", true );
+					}
+				}
+
+				if ( this.ParamGetVTF( "$decaltexture" ) != null )
+				{
+					//Debug.Assert( !this.wantsBaseTexture2 ); // Incompatible with decal
+					if( this.wantsBaseTexture2 )
+					{
+						Log.Error( "Error" ); // HATA
+					}
+					this.wantsDecal = true;
+					this.shaderInstance.SetDefineBool( "USE_DECAL", true );
+					var decalBlendMode = this.paramGetNumber( "$decalblendmode" );
+					this.shaderInstance.SetDefineString( "DECAL_BLEND_MODE", "" + decalBlendMode );
+				}
+				else
+				{
+					this.shaderInstance.SetDefineString( "DECAL_BLEND_MODE", "-1" );
+				}
+			
+
+
+
+			 if (this.ParamGetVTF("$envmapmask") != null) {
+				this.wantsEnvmapMask = true;
+				this.shaderInstance.SetDefineBool( "USE_ENVMAP_MASK", true );
+			}
+
+			if (this.ParamGetVTF("$envmap") != null) {
+						this.wantsEnvmap = true;
+						this.shaderInstance.SetDefineBool( "USE_ENVMAP", true );
+					}
+
+			if (this.paramGetBoolean("$selfillum")) {
+						this.wantsSelfIllum = true;
+						this.shaderInstance.SetDefineBool( "USE_SELFILLUM", true );
+
+						if ( this.ParamGetVTF( "$selfillummask" ) != null )
+						{
+							this.shaderInstance.SetDefineBool( "USE_SELFILLUM_MASK", true );
+						}
+
+						if ( this.paramGetBoolean( "$selfillumfresnel" ) )
+						{
+							this.wantsSelfIllumFresnel = true;
+							this.shaderInstance.SetDefineBool( "USE_SELFILLUM_FRESNEL", true );
+						}
+					}
+
+			// LightmappedGeneric uses only $seamless_scale to turn on seamless mode (for base), while the vertex has $seamless_base / $seamless_detail
+			if (this.paramGetBoolean("$seamless_base")) {
+						this.shaderInstance.SetDefineBool( "USE_SEAMLESS_BASE", true );
+						if ( this.paramGetNumber( "$seamless_scale" ) == 0.0f )
+							this.ParamSetNumber( "$seamless_scale", 1.0f );
+					} else if (this.paramGetBoolean("$seamless_detail")) {
+						this.shaderInstance.SetDefineBool( "USE_SEAMLESS_DETAIL", true );
+						if ( this.paramGetNumber( "$seamless_scale" ) == 0.0f )
+							this.ParamSetNumber( "$seamless_scale", 1.0f );
+					} else if (this.paramGetNumber("$seamless_scale") > 0.0f && this.shaderType == GenericShaderType.LightmappedGeneric) {
+						this.shaderInstance.SetDefineBool( "USE_SEAMLESS_BASE", true );
+			}
+			
+
+
+			
+
+
+							// Modulation color is used differently between lightmapped and non-lightmapped.
+				// In vertexlit / unlit, then the modulation color is multiplied in with the texture (and possibly blended).
+				// In lightmappedgeneric, then the modulation color is used as the diffuse lightmap scale, and contains the
+				// lightmap scale factor.
+				// USE_MODULATIONCOLOR_COLOR only handles the vertexlit / unlit case. USE_LIGHTMAP will also use the modulation
+				// color if necessary.
+				if (this.wantsLightmap)
+				{
+					this.shaderInstance.SetDefineBool( "USE_MODULATIONCOLOR_COLOR", false );
+					// TODO(jstpierre): Figure out if modulation alpha is used in lightmappedgeneric.
+					this.shaderInstance.SetDefineBool( "USE_MODULATIONCOLOR_ALPHA", false );
+				}
+				else
+				{
+					this.shaderInstance.SetDefineBool( "USE_MODULATIONCOLOR_COLOR", true );
+					this.shaderInstance.SetDefineBool( "USE_MODULATIONCOLOR_ALPHA", true );
+				}
+
+				if (this.hasVertexColorInput && (this.paramGetBoolean("$vertexcolor") || this.paramGetBoolean("$vertexalpha")))
+				{
+					this.shaderInstance.SetDefineBool( "USE_VERTEX_COLOR", true);
+				}
+
+				if (this.paramGetBoolean("$basealphaenvmapmask"))
+				{
+							this.shaderInstance.SetDefineBool( "USE_BASE_ALPHA_ENVMAP_MASK", true );
+						}
+
+				if (this.paramGetBoolean("$normalmapalphaenvmapmask") && this.wantsBumpmap)
+				{
+							this.shaderInstance.SetDefineBool( "USE_NORMALMAP_ALPHA_ENVMAP_MASK", true );
+						}
+
+				if (this.paramGetBoolean("$basemapalphaphongmask"))
+				{
+							this.shaderInstance.SetDefineBool( "USE_BASE_ALPHA_PHONG_MASK", true );
+						}
+
+				if (this.paramGetBoolean("$invertphongmask"))
+				{
+							this.shaderInstance.SetDefineBool( "USE_PHONG_MASK_INVERT", true );
+						}
+
+				if (this.paramGetBoolean("$ssbump"))
+				{
+							this.shaderInstance.SetDefineBool( "USE_SSBUMP", true );
+						}
+
+				if (this.paramGetBoolean("$halflambert"))
+				{
+							this.shaderInstance.SetDefineBool( "USE_HALF_LAMBERT", true );
+						}
+
+
+
+
+
+				if ( this.paramGetBoolean( "$alphatest" ) )
+				{
+					this.shaderInstance.SetDefineBool( "USE_ALPHATEST", true );
+				}
+				else if ( this.shaderType == GenericShaderType.DecalModulate )
+				{
+					this.isTranslucent = true;
+					this.isToneMapped = false;
+
+					/*this.setAttachmentStateSimple( this.megaStateFlags, new AttachmentState
+					{
+						blendMode = GfxBlendMode.Add,
+						blendSrcFactor = GfxBlendFactor.Dst,
+						blendDstFactor = GfxBlendFactor.Src
+					} );
+					this.megaStateFlags.depthWrite = false;*/
+				}
+				else if ( this.paramGetNumber( "$rendermode" ) > 0 )
+				{
+					var renderMode = (RenderMode)this.paramGetNumber( "$rendermode" );
+
+					if ( renderMode == RenderMode.Glow || renderMode == RenderMode.WorldGlow )
+					{
+						//this.setAlphaBlendMode( this.megaStateFlags, AlphaBlendMode.Glow );
+						// TODO(jstpierre): Once we support glow traces, re-enable this.
+						// this.megaStateFlags.depthCompare = GfxCompareMode.Always;
+					}
+					else if ( renderMode == RenderMode.TransAdd )
+					{
+						//this.setAlphaBlendMode( this.megaStateFlags, AlphaBlendMode.Add );
+					}
+					else
+					{
+						// Haven't seen this render mode yet.
+						//Debugger.Break();
+					}
+				}
+				else
+				{
+					var isTranslucent = false;
+
+					if ( this.TextureIsTranslucent( "$basetexture" ) )
+						isTranslucent = true;
+
+					//this.setAlphaBlendMode( this.megaStateFlags, this.getAlphaBlendMode( isTranslucent ) );
+				}
+
+				this.shaderInstance.SetDefineBool( "USE_SSBUMP_NORMALIZE", materialCache.ssbumpNormalize );
+
+				/*this.setSkinningMode( this.shaderInstance );
+				this.setFogMode( this.shaderInstance );
+				this.setCullMode( this.megaStateFlags );
+
+				var sortLayer = this.isTranslucent ? GfxRendererLayer.TRANSLUCENT : GfxRendererLayer.OPAQUE;
+				this.sortKeyBase = makeSortKey( sortLayer );
+
+				this.recacheProgram( materialCache.cache );
+				this.calcObjectParamsWordCount();*/
+
+			}
+
+
+			/*private void UpdateTextureMappings( TextureMapping[] dst, SourceRenderContext renderContext, int? lightmapPageIndex )
+			{
+				ResetTextureMappings( dst );
+
+				var systemTextures = renderContext.MaterialCache.StaticResources;
+
+				if ( !ParamGetTexture( "$basetexture" ).FillTextureMapping( dst[0], ParamGetInt( "$frame" ) ) )
+				{
+					if ( WantsEnvmap )
+						dst[0].GfxTexture = systemTextures.OpaqueBlackTexture2D;
+					else
+						dst[0].GfxTexture = systemTextures.WhiteTexture2D;
+				}
+
+				if ( WantsBaseTexture2 )
+					ParamGetTexture( "$basetexture2" ).FillTextureMapping( dst[1], ParamGetInt( "$frame2" ) );
+
+				ParamGetTexture( "$bumpmap" ).FillTextureMapping( dst[2], ParamGetInt( "$bumpframe" ) );
+				ParamGetTexture( "$bumpmap2" ).FillTextureMapping( dst[3], ParamGetInt( "$bumpframe2" ) );
+				ParamGetTexture( "$bumpmask" ).FillTextureMapping( dst[4], 0 );
+				ParamGetTexture( "$detail" ).FillTextureMapping( dst[5], ParamGetInt( "$detailframe" ) );
+
+				if ( WantsDecal )
+					ParamGetTexture( "$decaltexture" ).FillTextureMapping( dst[1], 0 );
+
+				ParamGetTexture( "$envmapmask" ).FillTextureMapping( dst[6], ParamGetInt( "$envmapmaskframe" ) );
+				ParamGetTexture( "$phongexponenttexture" ).FillTextureMapping( dst[7], 0 );
+				ParamGetTexture( "$selfillummask" ).FillTextureMapping( dst[8], 0 );
+				ParamGetTexture( "$blendmodulatetexture" ).FillTextureMapping( dst[9], 0 );
+
+				if ( WantsLightmap )
+					renderContext.LightmapManager.FillTextureMapping( dst[10], lightmapPageIndex );
+
+				ParamGetTexture( "$envmap" ).FillTextureMapping( dst[11], ParamGetInt( "$envmapframe" ) );
+
+				if ( WantsProjectedTexture && renderContext.CurrentView.ViewType != SourceEngineViewType.ShadowMap )
+				{
+					dst[12].LateBinding = LateBindingTexture.ProjectedLightDepth;
+					ProjectedLight.Texture.FillTextureMapping( dst[13], ProjectedLight.TextureFrame );
+				}
+			}
+
+			public override void CalcProjectedLight( SourceRenderContext renderContext, AABB bbox )
+			{
+				if ( this.ShaderType == GenericShaderType.UnlitGeneric )
+					return;
+
+				ProjectedLightRenderer projectedLightRenderer = null;
+				if ( renderContext.CurrentViewRenderer != null )
+					projectedLightRenderer = renderContext.CurrentViewRenderer.CurrentProjectedLightRenderer;
+
+				if ( projectedLightRenderer != null )
+				{
+					if ( !projectedLightRenderer.Light.FrustumView.Frustum.Contains( bbox ) )
+						projectedLightRenderer = null;
+				}
+
+				this.projectedLight = projectedLightRenderer != null ? projectedLightRenderer.Light : null;
+
+				this.wantsProjectedTexture = this.projectedLight != null && this.projectedLight.Texture != null;
+				if ( this.ShaderInstance.SetDefineBool( "USE_PROJECTED_LIGHT", this.wantsProjectedTexture ) )
+					this.GfxProgram = null;
+			}
+
+			private void CalcObjectParamsWordCount()
+			{
+				int vec4Count = 0;
+
+				if ( wantsAmbientCube )
+					vec4Count += 6;
+				if ( wantsDynamicLighting )
+					vec4Count += 4 * ShaderTemplate_Generic.MaxDynamicWorldLights;
+				vec4Count += 2;
+				if ( wantsBumpmap )
+					vec4Count += 2;
+				if ( wantsBumpmap2 )
+					vec4Count += 2;
+				if ( wantsDetail )
+					vec4Count += 2;
+				if ( wantsEnvmapMask )
+					vec4Count += 1;
+				if ( wantsBlendModulate )
+					vec4Count += 1;
+				if ( wantsEnvmap )
+					vec4Count += 2;
+				if ( wantsSelfIllum )
+					vec4Count += 1;
+				if ( wantsSelfIllumFresnel )
+					vec4Count += 1;
+				if ( wantsPhong )
+					vec4Count += 2;
+				if ( wantsProjectedTexture )
+					vec4Count += 4 + 2;
+				if ( wantsTreeSway )
+					vec4Count += 5;
+				vec4Count += 1; // Color
+				vec4Count += 1; // Misc
+				objectParamsWordCount = vec4Count * 4;
+			}
+
+			public void setOnRenderInst( SourceRenderContext renderContext, GfxRenderInst renderInst, int? lightmapPageIndex = null )
+			{
+				// TODO: Special shader program for depth-only?
+
+				Debug.Assert( this.isMaterialLoaded() );
+				this.updateTextureMappings( textureMappings, renderContext, lightmapPageIndex );
+
+				this.setupOverrideSceneParams( renderContext, renderInst );
+
+				if ( this.gfxProgram == null )
+					this.calcObjectParamsWordCount();
+
+				int offs = renderInst.allocateUniformBuffer( ShaderTemplate_Generic.ub_ObjectParams, this.objectParamsWordCount );
+				Span<float> d = renderInst.mapUniformBufferF32( ShaderTemplate_Generic.ub_ObjectParams );
+
+				if ( this.wantsAmbientCube )
+				{
+					LightCache lightCache = this.entityParams?.lightCache ?? throw new InvalidOperationException( "EntityParams or LightCache is null." );
+					offs += lightCache.fillAmbientCube( d, offs );
+				}
+
+				if ( this.wantsDynamicLighting )
+				{
+					LightCache lightCache = this.entityParams?.lightCache ?? throw new InvalidOperationException( "EntityParams or LightCache is null." );
+					offs += lightCache.fillWorldLights( d, offs, renderContext.worldLightingState );
+				}
+
+				offs += this.paramFillTextureMatrix( d, offs, "$basetexturetransform", this.paramGetFlipY( renderContext, "$basetexture" ) );
+
+				if ( this.wantsBumpmap )
+					offs += this.paramFillTextureMatrix( d, offs, "$bumptransform" );
+
+				if ( this.wantsBumpmap2 )
+					offs += this.paramFillTextureMatrix( d, offs, "$bumptransform2" );
+
+				if ( this.wantsDetail )
+				{
+					Matrix4x4 detailTextureTransform = this.paramGetMatrix( "$detailtexturetransform" );
+					float detailScale = this.paramGetNumber( "$detailscale" );
+					Matrix4x4 scaleMatrix = Matrix4x4.CreateScale( detailScale );
+					Matrix4x4.Multiply( detailTextureTransform, scaleMatrix, scratchMat4a );
+					offs += fillMatrix4x2( d, offs, scratchMat4a );
+				}
+
+				if ( this.wantsEnvmapMask )
+					offs += this.paramFillScaleBias( d, offs, "$envmapmasktransform" );
+
+				if ( this.wantsBlendModulate )
+					offs += this.paramFillScaleBias( d, offs, "$blendmasktransform" );
+
+				if ( this.wantsEnvmap )
+				{
+					offs += this.paramFillColor( d, offs, "$envmaptint" );
+					float envmapContrast = this.paramGetNumber( "$envmapcontrast" );
+					float envmapSaturation = this.paramGetNumber( "$envmapsaturation" );
+					float fresnelReflection = this.paramGetNumber( "$fresnelreflection" );
+					float envmapLightScale = this.paramGetNumber( "$envmaplightscale" );
+					offs += fillVec4( d, offs, envmapContrast, envmapSaturation, fresnelReflection, envmapLightScale );
+				}
+			}
+
+
+			public void SetOnRenderInst( SourceRenderContext renderContext, GfxRenderInst renderInst, int? lightmapPageIndex = null )
+			{
+				if ( this.wantsSelfIllum )
+					offs += this.paramFillGammaColor( d, offs, "$selfillumtint" );
+
+				if ( this.wantsSelfIllumFresnel )
+				{
+					var minMaxExp = this.paramGetVector( "$selfillumfresnelminmaxexp" );
+					var min = minMaxExp.Get( 0 );
+					var max = minMaxExp.Get( 1 );
+					var exp = minMaxExp.Get( 2 );
+					offs += fillVec4( d, offs, min, max, exp );
+				}
+
+				if ( this.wantsPhong )
+				{
+					var fresnelRanges = this.paramGetVector( "$phongfresnelranges" );
+					var r0 = fresnelRanges.Get( 0 );
+					var r1 = fresnelRanges.Get( 1 );
+					var r2 = fresnelRanges.Get( 2 );
+					offs += fillVec4( d, offs, r0, r1, r2, this.paramGetNumber( "$phongalbedoboost" ) );
+					offs += this.paramFillColor( d, offs, "$phongtint", this.paramGetNumber( "$phongboost" ) );
+				}
+
+				if ( this.wantsProjectedTexture )
+				{
+					var projectedLight = this.projectedLight!;
+					// We only need rows for X, Y and W (skip Z).
+					offs += fillMatrix4x4( d, offs, projectedLight.frustumView.clipFromWorldMatrix );
+					colorScale( scratchColor, projectedLight.lightColor, projectedLight.lightColor.a * projectedLight.brightnessScale * 0.25f );
+					offs += fillColor( d, offs, scratchColor );
+					offs += fillVec3v( d, offs, projectedLight.frustumView.cameraPos, projectedLight.farZ );
+				}
+
+				if ( this.wantsTreeSway )
+				{
+					var windDirX = 0.5f;
+					var windDirY = 0.5f;
+					var time = renderContext.globalTime;
+					offs += fillVec4( d, offs, windDirX, windDirY, time, this.paramGetNumber( "$treeswayspeed" ) );
+
+					offs += fillVec4( d, offs,
+						this.paramGetNumber( "$treeswayheight" ),
+						this.paramGetNumber( "$treeswaystartheight" ),
+						this.paramGetNumber( "$treeswayradius" ),
+						this.paramGetNumber( "$treeswaystartradius" )
+					);
+
+					offs += fillVec4( d, offs,
+						this.paramGetNumber( "$treeswaystrength" ),
+						this.paramGetNumber( "$treeswayfalloffexp" ),
+						this.paramGetNumber( "$treeswayspeedhighwindmultiplier" )
+					);
+
+					offs += fillVec4( d, offs,
+						this.paramGetNumber( "$treeswayscrumblestrength" ),
+						this.paramGetNumber( "$treeswayscrumblefalloffexp" ),
+						this.paramGetNumber( "$treeswayscrumblefrequency" ),
+						this.paramGetNumber( "$treeswayscrumblespeed" )
+					);
+
+					offs += fillVec4( d, offs,
+						this.paramGetNumber( "$treeswayspeedlerpstart" ),
+						this.paramGetNumber( "$treeswayspeedlerpend" )
+					);
+				}
+
+				// Compute modulation color.
+				Color scratchColor = this.shaderType == GenericShaderType.Black ? OpaqueBlack : White;
+				this.paramGetVector( "$color" ).mulColor( scratchColor );
+				this.paramGetVector( "$color2" ).mulColor( scratchColor );
+				scratchColor.a *= this.paramGetNumber( "$alpha" );
+				int offs = fillColor( d, offs, scratchColor );
+
+				float alphaTestReference = this.paramGetNumber( "$alphatestreference" );
+				float detailBlendFactor = this.paramGetNumber( "$detailblendfactor" );
+				float specExponentFactor = this.wantsPhongExponentTexture ? this.paramGetNumber( "$phongexponentfactor" ) : this.paramGetNumber( "$phongexponent" );
+				float seamlessScale = this.paramGetNumber( "$seamless_scale" );
+				offs += fillVec4( d, offs, alphaTestReference, detailBlendFactor, specExponentFactor, seamlessScale );
+
+				this.recacheProgram( renderContext.renderCache );
+				renderInst.SetSamplerBindingsFromTextureMappings( textureMappings );
+				renderInst.SetGfxProgram( this.gfxProgram );
+				renderInst.SetMegaStateFlags( this.megaStateFlags );
+				renderInst.sortKey = this.sortKeyBase;
+			}
+			*/
+
+			/*public void destroy(GfxDevice device){}*/
+
+		}
+
+
 
 
 
@@ -1230,14 +1997,14 @@ namespace MapParser.SourceEngine
 
 
 
-				//staticResources = new StaticResources( device, cache );
+			//staticResources = new StaticResources( device, cache );
 
-				//particleSystemCache = new ParticleSystemCache( filesystem );
+			//particleSystemCache = new ParticleSystemCache( filesystem );
 
-				//deviceNeedsFlipY = GfxDeviceNeedsFlipY( device );
-			}
+			//deviceNeedsFlipY = GfxDeviceNeedsFlipY( device );
+		}
 
-			public bool IsInitialized()
+		public bool IsInitialized()
 			{
 				/*if ( !particleSystemCache.IsLoaded )
 				{

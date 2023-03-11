@@ -2,5 +2,6 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/.addon
-/code/obj/Debug/map_parser.csproj.AssemblyReference.cache
+/code/obj/
+/code/Properties/
+*.csproj
