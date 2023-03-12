@@ -127,7 +127,7 @@
 	void selectRow( Panel panel ) 
 	{
 		var i = int.Parse(panel.GetAttribute("i"));
-		for (var j = 0; j < selectedModelEntity?.enabledBodyParts.Count; j++)
+		for (var j = 0; j < selectedModelEntity?.enabledBodyParts.Length; j++)
 			selectedModelEntity.enabledBodyParts[j] = j == i;
 
 		selectedBodyPart = i;

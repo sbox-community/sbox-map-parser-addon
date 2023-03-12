@@ -367,22 +367,19 @@
 							</div>
 							<div style="height:95%;width:50%;flex-direction:column;justify-content:center;align-content:center;align-items:center;align-self:center;">
 								<div @ref="canvas" style="margin-bottom:15px;top:10px;width:328px;height:328px;box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);"></div>
-								<div style="min-height:3.5%;">Cached Texture: @Render.TextureCache.textureData.Count()   Cached WAD: @GoldSrc.TextureCache.WADCache.Count()  Source: @selectedWAD</div>
-								<div style="margin-top:5px">
-									<Button style="width:45%;min-height:4.5%" tooltip="Clear the texture cache.." @onclick=@(() => Render.TextureCache.clearTexture())><i>remove_circle</i> Clear Texture Cache ( Local ) </Button>
-									<Button style="left:10px;width:45%;min-height:4.5%" tooltip="Clear the WAD cache.." @onclick=@(() => GoldSrc.TextureCache.clearWAD())><i>remove_circle</i> Clear WAD Cache ( Local ) </Button>
-								</div>
+								<div style="min-height:3.5%;margin-top:2.5%">Cached Texture: @Render.TextureCache.textureData.Count()   Cached WAD: @GoldSrc.TextureCache.WADCache.Count()  Source: @selectedWAD</div>
 							</div>
 						</div>
 					</div>
 					<div style="display:none;" class="tab_4" @ref="tab_4_2">
-						<div style="width:20%;height:100%;flex-direction:column;">
-							<ModelList style="height:30%;" @ref="modellist"></ModelList>
-							<ModelBodyPartList style="height:30%;" @ref="modelbodypartlist"></ModelBodyPartList>
-							<ModelSubModelList style="height:30%;" @ref="modelsubmodellist"></ModelSubModelList>
-							<ModelSequenceList style="height:30%;" @ref="modelsequencelist"></ModelSequenceList>
-							<Button style="width:100%;" tooltip="Clear Model cache.." @onclick=@(() => MapParser.GoldSrc.Entities.ModelRenderer.clearModelCache())><i>remove_circle</i> Clear Models Cache ( Local ) </Button>
+						<div @ref="modelViewerSideMenu" style="width:20%;height:100%;flex-direction:column;overflow:scroll;">
+							<ModelList style="height:30%;margin-bottom:14%;" @ref="modellist"></ModelList>
+							<ModelBodyPartList style="height:30%;margin-bottom:14%;" @ref="modelbodypartlist"></ModelBodyPartList>
+							<ModelSubModelList style="height:30%;margin-bottom:14%;" @ref="modelsubmodellist"></ModelSubModelList>
+							<ModelSequenceList style="height:30%;margin-bottom:14%;" @ref="modelsequencelist"></ModelSequenceList>
 						</div>
+						<ScrollBar @ref="scrollBarMV"></ScrollBar>
+
 						<div style="width:80%;height:100%">
 							<ModelViewer @ref="modelviewer"></ModelViewer>
 						</div>
@@ -394,6 +391,16 @@
 						<div style="width:100%;height:7%;">
 							<Button style="width:80%;" tooltip="Clear all download files from the mirrors.." @onclick=@(() => clearAllDownloadFiles())><i>remove_circle</i> Clear All Download Files ( Local ) </Button>
 						</div>
+						<div style="width:100%;height:7%;">
+							<Button style="width:80%" tooltip="Clear the texture cache.." @onclick=@(() => Render.TextureCache.clearTexture())><i>remove_circle</i> Clear Texture Cache ( Local ) </Button>
+						</div>
+						<div style="width:100%;height:7%;">
+							<Button style="width:80%" tooltip="Clear the WAD cache.." @onclick=@(() => GoldSrc.TextureCache.clearWAD())><i>remove_circle</i> Clear WAD Cache ( Local ) </Button>
+						</div>
+						<div style="width:100%;height:7%;">
+							<Button style="width:80%;" tooltip="Clear Model cache.." @onclick=@(() => MapParser.GoldSrc.Entities.ModelRenderer.clearModelCache())><i>remove_circle</i> Clear Models Cache ( Local ) </Button>
+						</div>
+						<div style="width:100%;height:2%;"></div>
 						<div style="flex-direction:row;width:100%;height:7%;">
 							Pixelation;
 							<Button style="left:10px;" class="@(!Manager.clientSettings.pixelation)" tooltip="Use filtered textures" @onclick=@(() => {Manager.clientSettings.pixelation = false;Manager.saveSettings();})><i>settings_suggest</i> Disabled </Button>
@@ -460,6 +467,8 @@
 	public ModelBodyPartList modelbodypartlist { get; set; }
 	public ModelSubModelList modelsubmodellist { get; set; }
 	public ModelSequenceList modelsequencelist { get; set; }
+	public Panel modelViewerSideMenu { get; set; }
+	ScrollBar scrollBarMV { get; set; }
 	public Panel tab_1 { get; set; }
 	public Panel tab_2 { get; set; }
 	public Panel tab_3 { get; set; }
@@ -782,6 +791,8 @@
 
 			modelbodypartlist.msmlist = modelsubmodellist;
 			modelbodypartlist.mslist = modelsequencelist;
+
+			scrollBarMV.list = modelViewerSideMenu;
 		}
 	}
 	protected override int BuildHash()

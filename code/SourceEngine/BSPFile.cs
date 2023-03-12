@@ -223,32 +223,6 @@ namespace MapParser.SourceEngine
 			public int vertexCount;
 		}
 
-		// TODO, verify
-		public class BSPPhysicsData
-		{
-			public List<ConvexHull> Hulls { get; set; }
-
-			public BSPPhysicsData()
-			{
-				Hulls = new List<ConvexHull>();
-			}
-		}
-
-		public class ConvexHull
-		{
-			public List<Vector3> Vertices { get; set; }
-			public List<int> Indices { get; set; }
-			public short MaterialIndex { get; set; }
-
-			public ConvexHull()
-			{
-				Vertices = new List<Vector3>();
-				Indices = new List<int>();
-				MaterialIndex = -1;
-			}
-		}
-
-
 		// 3 pos, 4 normal, 4 tangent, 4 uv
 		public const int VERTEX_SIZE = (3 + 4 + 4 + 4);
 
@@ -1227,32 +1201,6 @@ namespace MapParser.SourceEngine
 
 				dispinfolist.Add( new DispInfo { startPos = startPos, dispVertStart = m_iDispVertStart, power = power, sideLength = sideLength, vertexCount = vertexCount } );
 			}
-
-			// Fix
-			/*BSPPhysicsData data = new BSPPhysicsData();
-			var physicsCollide = GetLumpData( LumpType.PHYSCOLLIDE );
-			for ( int idx22 = 0; idx22 < physicsCollide.Length; idx22++ )
-			{
-				ConvexHull hull = new ConvexHull();
-				hull.MaterialIndex = BitConverter.ToInt16( physicsCollide, idx22 + 0x00 );//reader.ReadInt16();
-				int vertexCount = BitConverter.ToInt32( physicsCollide, idx22 + 0x02 );
-				int indexCount = BitConverter.ToInt32( physicsCollide, idx22 + 0x06 );
-
-				var offset = idx22 + 0x10;
-				for ( int j = 0; j < vertexCount; j++ )
-				{
-					Vector3 vertex = new Vector3( BitConverter.ToSingle( dispinfo, offset ), BitConverter.ToSingle( dispinfo, offset + 0x04 ), BitConverter.ToSingle( dispinfo, offset + 0x04 ) );
-					hull.Vertices.Add( vertex );
-					offset += 0x12;
-				}
-				for ( int j = 0; j < indexCount; j++ )
-				{
-					int index = BitConverter.ToInt32( physicsCollide, offset );
-					hull.Indices.Add( index );
-					offset += 0x04;
-				}
-				data.Hulls.Add( hull );
-			}*/
 
 			var primindicesBytes = GetLumpData( LumpType.PRIMINDICES );//.CreateTypedArray<ushort>();
 

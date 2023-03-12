@@ -1948,6 +1948,75 @@ namespace MapParser.SourceEngine
 
 
 
+	public class StaticResources
+	{
+		/*public GfxTexture whiteTexture2D;
+		public GfxTexture opaqueBlackTexture2D;
+		public GfxTexture transparentBlackTexture2D;
+		public GfxSampler linearClampSampler;
+		public GfxSampler linearRepeatSampler;
+		public GfxSampler pointClampSampler;
+		public GfxSampler shadowSampler;
+		public StaticQuad staticQuad;
+		public GfxBuffer zeroVertexBuffer;*/
+
+		public StaticResources() //GfxDevice device, GfxRenderCache cache
+			{
+			/*whiteTexture2D = makeSolidColorTexture2D( device, White );
+			opaqueBlackTexture2D = makeSolidColorTexture2D( device, OpaqueBlack );
+			transparentBlackTexture2D = makeSolidColorTexture2D( device, TransparentBlack );
+			shadowSampler = cache.createSampler( new GfxSamplerDescriptor
+			{
+				minFilter = GfxTexFilterMode.Bilinear,
+				magFilter = GfxTexFilterMode.Bilinear,
+				mipFilter = GfxMipFilterMode.Nearest,
+				wrapS = GfxWrapMode.Clamp,
+				wrapT = GfxWrapMode.Clamp,
+				compareMode = GfxCompareMode.Less
+			} );
+			linearClampSampler = cache.createSampler( new GfxSamplerDescriptor
+			{
+				magFilter = GfxTexFilterMode.Bilinear,
+				minFilter = GfxTexFilterMode.Bilinear,
+				mipFilter = GfxMipFilterMode.Nearest,
+				minLOD = 0,
+				maxLOD = 100,
+				wrapS = GfxWrapMode.Clamp,
+				wrapT = GfxWrapMode.Clamp
+			} );
+			linearRepeatSampler = cache.createSampler( new GfxSamplerDescriptor
+			{
+				magFilter = GfxTexFilterMode.Bilinear,
+				minFilter = GfxTexFilterMode.Bilinear,
+				mipFilter = GfxMipFilterMode.Nearest,
+				minLOD = 0,
+				maxLOD = 100,
+				wrapS = GfxWrapMode.Repeat,
+				wrapT = GfxWrapMode.Repeat
+			} );
+			pointClampSampler = cache.createSampler( new GfxSamplerDescriptor
+			{
+				magFilter = GfxTexFilterMode.Point,
+				minFilter = GfxTexFilterMode.Point,
+				mipFilter = GfxMipFilterMode.Nearest,
+				minLOD = 0,
+				maxLOD = 100,
+				wrapS = GfxWrapMode.Clamp,
+				wrapT = GfxWrapMode.Clamp
+			} );
+			zeroVertexBuffer = makeStaticDataBuffer( device, GfxBufferUsage.Vertex, new ArrayBuffer( 16 ) );
+			staticQuad = new StaticQuad( device, cache );*/
+		}
+
+		/*public void destroy( GfxDevice device )
+		{
+			device.destroyTexture( whiteTexture2D );
+			device.destroyTexture( opaqueBlackTexture2D );
+			device.destroyTexture( transparentBlackTexture2D );
+			device.destroyBuffer( zeroVertexBuffer );
+			staticQuad.destroy( device );
+		}*/
+	}
 
 
 
@@ -1963,7 +2032,8 @@ namespace MapParser.SourceEngine
 
 
 
-		public partial class MaterialCache
+
+	public partial class MaterialCache
 		{
 
 
@@ -1974,7 +2044,7 @@ namespace MapParser.SourceEngine
 			private bool usingHDR = false;
 			//public readonly ParticleSystemCache particleSystemCache;
 			public bool ssbumpNormalize = false;
-			//public StaticResources staticResources;
+			public StaticResources staticResources;
 			public List<string> materialDefines = new List<string>();
 			public bool deviceNeedsFlipY;
 			//public ShaderTemplates shaderTemplates = new ShaderTemplates();
@@ -1997,12 +2067,12 @@ namespace MapParser.SourceEngine
 
 
 
-			//staticResources = new StaticResources( device, cache );
+				this.staticResources = new StaticResources(); //GfxDevice device, GfxRenderCache cache
 
-			//particleSystemCache = new ParticleSystemCache( filesystem );
+				//particleSystemCache = new ParticleSystemCache( filesystem );
 
-			//deviceNeedsFlipY = GfxDeviceNeedsFlipY( device );
-		}
+				//deviceNeedsFlipY = GfxDeviceNeedsFlipY( device );
+			}
 
 		public bool IsInitialized()
 			{
@@ -2077,7 +2147,7 @@ namespace MapParser.SourceEngine
 				else if ( shaderType == "spritecard" )
 					return new Material_SpriteCard( vmt );
 				else*/
-				return null;//new Material_Generic( vmt );
+				return new Material_Generic( vmt );
 			}
 
 			public async Task<BaseMaterial> CreateMaterialInstance( string path )

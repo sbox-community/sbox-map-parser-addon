@@ -236,6 +236,23 @@ namespace MapParser.SourceEngine
 
 
 
+
+
+
+
+		public class SourceLoadContext
+		{
+			//public EntityFactoryRegistry entityFactoryRegistry;
+
+			public SourceFileSystem filesystem;
+
+			public SourceLoadContext( SourceFileSystem filesystem )
+			{
+				//entityFactoryRegistry = new EntityFactoryRegistry();
+				this.filesystem = filesystem;
+			}
+		}
+
 		public class SourceRenderContext
 		{
 			//public EntityFactoryRegistry entityFactoryRegistry;
@@ -270,15 +287,15 @@ namespace MapParser.SourceEngine
 
 			//public DebugStatistics debugStatistics = new DebugStatistics();
 
-			public SourceRenderContext() // GfxDevice device, SourceLoadContext loadContext
+			public SourceRenderContext( SourceLoadContext loadContext ) // GfxDevice device, 
 			{
-				/*this.entityFactoryRegistry = loadContext.entityFactoryRegistry;
+				//this.entityFactoryRegistry = loadContext.entityFactoryRegistry;
 				this.filesystem = loadContext.filesystem;
-
-				this.renderCache = new GfxRenderCache( device );
-				this.lightmapManager = new LightmapManager( device, this.renderCache );
-				this.materialCache = new MaterialCache( device, this.renderCache, this.filesystem );
-				this.studioModelCache = new StudioModelCache( this, this.filesystem );
+				
+				//this.renderCache = new GfxRenderCache( device );
+				//this.lightmapManager = new LightmapManager( device, this.renderCache );
+				this.materialCache = new MaterialCache( this.filesystem ); // device, this.renderCache,
+				/*this.studioModelCache = new StudioModelCache( this, this.filesystem );
 				this.colorCorrection = new SourceColorCorrection( device, this.renderCache );
 
 				if ( !this.device.queryLimits().occlusionQueriesRecommended )

@@ -18,7 +18,7 @@ namespace MapParser.GoldSrc.Entities
 	public static class ModelRenderer
 	{
 		// TODO: convert to struct
-		public static Dictionary<string, (List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Texture, List<float[]>)>>, ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MDLEntity)> ModelCache = new();
+		public static Dictionary<string, (List<List<(float[][][], float[], int, Texture, List<float[]>)>>, ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MDLEntity)> ModelCache = new();
 
 		public static void clearModelCache()
 		{
@@ -28,19 +28,14 @@ namespace MapParser.GoldSrc.Entities
 			ModelCache.Clear();
 		}
 
-		public struct BufferAttribute<T>
-		{
-			public IEnumerable<T> Array;
-		}
-
 		/**
 		 * Mesh buffers of each frame of each sequence of the model and mesh UV-maps
 		 */
 		public class MeshRenderData
 		{
-			public BufferAttribute<float>[][] geometryBuffers { get; set; }
-			public BufferAttribute<float> uvMap { get; set; }
-			//public BufferAttribute<float> lightData { get; set; }
+			public float[][][] geometryBuffers { get; set; }
+			public float[] uvMap { get; set; }
+			//public float[] lightData { get; set; }
 			//For Server ( might be removed )
 			public List<float[]> collisionMeshData { get; set; }
 		}
@@ -100,9 +95,9 @@ namespace MapParser.GoldSrc.Entities
 					var i = 0;
 					foreach ( MeshRenderData subModel in meshesRenderData[bodyPartIndex][subModelIndex] )
 					{
-						BufferAttribute<float>[][] geometryBuffers = subModel.geometryBuffers;
-						BufferAttribute<float> uvMap = subModel.uvMap;
-						BufferAttribute<float> initialGeometryBuffer = geometryBuffers[0][0];
+						float[][][] geometryBuffers = subModel.geometryBuffers;
+						float[] uvMap = subModel.uvMap;
+						float[] initialGeometryBuffer = geometryBuffers[0][0];
 						int skinRef = modelData.meshes[bodyPartIndex][subModelIndex][i++].skinRef;
 						int textureIndex = modelData.skinRef[skinRef];
 						Sandbox.Texture texture = textures[textureIndex];
@@ -119,7 +114,7 @@ namespace MapParser.GoldSrc.Entities
 			return modelMeshes.ToArray();
 		}*/
 
-		public static List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Texture, List<float[]>)>>  CreateModelEntity( ref MeshRenderData[][][] meshesRenderData, ModelDataParser.ModelParser modelData, ref List<ushort[]> textureBuffers, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
+		public static List<List<(float[][][], float[], int, Texture, List<float[]>)>>  CreateModelEntity( ref MeshRenderData[][][] meshesRenderData, ModelDataParser.ModelParser modelData, ref List<ushort[]> textureBuffers, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
 		{
 			List<Texture> textures = new();
 			if (Game.IsClient) { 
@@ -127,18 +122,18 @@ namespace MapParser.GoldSrc.Entities
 					return TextureCache.addTexture( textureBuffer.Select( x => (byte)x ).ToArray(), $"{modelData.header.name}_{textureIndex}" , modelData.textures[textureIndex].width, modelData.textures[textureIndex].height, Util.PathToMapNameWithExtension(modelData.header.name) ); //Sandbox.Texture.Create( modelData.textures[textureIndex].width, modelData.textures[textureIndex].height ).WithData( textureBuffer.Select( x => (byte)x ).ToArray() ).Finish();
 				} ).ToList();
 			}
-			List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Texture, List<float[]>)>> meshes = new(); //BufferAttribute<float>,
+			List<List<(float[][][], float[], int, Texture, List<float[]>)>> meshes = new(); //float[],
 			for ( int bodyPartIndex = 0; bodyPartIndex < meshesRenderData.Length; bodyPartIndex++ )
 			{
-				List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Texture, List<float[]>)> submodels = new();
+				List<(float[][][], float[], int, Texture, List<float[]>)> submodels = new();
 				for ( int subModelIndex = 0; subModelIndex < meshesRenderData[bodyPartIndex].Length; subModelIndex++ )
 				{
 					var i = 0;
 					foreach ( MeshRenderData subModel in meshesRenderData[bodyPartIndex][subModelIndex] )
 					{
-						BufferAttribute<float>[][] geometryBuffers = subModel.geometryBuffers;
-						BufferAttribute<float> uvMap = subModel.uvMap;
-						//BufferAttribute<float> lightData = subModel.lightData;
+						float[][][] geometryBuffers = subModel.geometryBuffers;
+						float[] uvMap = subModel.uvMap;
+						//float[] lightData = subModel.lightData;
 						int skinRef = modelData.meshes[bodyPartIndex][subModelIndex][i++].skinRef;
 						int textureIndex = modelData.skinRef.Count() <= skinRef ? -1 : modelData.skinRef[skinRef];
 
@@ -150,7 +145,7 @@ namespace MapParser.GoldSrc.Entities
 			return meshes;
 		}
 
-			/*private static Structs.Mesh CreateMesh( BufferAttribute<float> initialGeometryBuffer, BufferAttribute<float> uvMap, Sandbox.Texture texture )
+			/*private static Structs.Mesh CreateMesh( float[] initialGeometryBuffer, float[] uvMap, Sandbox.Texture texture )
 			{
 				var meshArray = initialGeometryBuffer.Array.ToArray();
 				var uvArray = uvMap.Array.ToArray();
@@ -211,10 +206,10 @@ namespace MapParser.GoldSrc.Entities
 						MeshRenderData meshRenderData = new MeshRenderData
 						{
 							// UV-map of the mesh
-							uvMap = new BufferAttribute<float>() { Array = meshFacesData.Item2 },
+							uvMap = meshFacesData.Item2,
 
 							// Light data
-							//lightData = new BufferAttribute<float>() { Array = meshFacesData.Item4},
+							//lightData = new float[]() { Array = meshFacesData.Item4},
 
 							// For server entity collision data, it is vertices and indices without processed
 							collisionMeshData = meshFacesData.Item4,
@@ -222,7 +217,7 @@ namespace MapParser.GoldSrc.Entities
 							// List of mesh buffer for each frame of each sequence
 							geometryBuffers = modelData.sequences.Select( (sequence , sequenceIndex ) =>
 							{
-								List<BufferAttribute<float>> bufferAttributes = new List<BufferAttribute<float>>();
+								List<float[]> bufferAttributes = new List<float[]>();
 
 								for ( int frame = 0; frame < sequence.numFrames; frame++ )
 								{
@@ -235,7 +230,7 @@ namespace MapParser.GoldSrc.Entities
 										ref boneTransforms
 									);
 
-									bufferAttributes.Add( new BufferAttribute<float>() { Array = transformedVertices} );
+									bufferAttributes.Add( transformedVertices );
 
 									if ( Game.IsServer )
 										break;

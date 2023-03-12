@@ -5,7 +5,6 @@ using Sandbox.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static MapParser.GoldSrc.Entities.ModelRenderer;
 using static MapParser.Manager;
 
 namespace MapParser.GoldSrc.Entities
@@ -16,7 +15,7 @@ namespace MapParser.GoldSrc.Entities
 		public MDLEntity_SV SV;
 		public MDLEntity_CL CL;
 
-		public static MDLEntity Create( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Sandbox.Texture, List<float[]>)>> subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
+		public static MDLEntity Create( ref List<List<(float[][][], float[], int, Sandbox.Texture, List<float[]>)>> subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
 		{
 			MDLEntity ent = new MDLEntity();
 
@@ -54,12 +53,12 @@ namespace MapParser.GoldSrc.Entities
 		{
 			// BodyParts, Submodels, animations and frames respectively. Frames are segmented as list because of the limit of vertexBuffer
 			[SkipHotload]
-			List<List<List<List<List<VertexBuffer>>>>> vertexBuffers = new();
+			VertexBuffer[][][][][] vertexBuffers;
 			private static Material renderMat = Material.FromShader( "shaders/goldsrc_model_render.shader" );
-			List<Sandbox.Texture> textures = new();
-			List<List<bool>> enabledSubmodels = new(); // Contains submodel meshes
-			List<List<int>> enabledMeshes = new(); // Contains submodel mesh map
-			public List<bool> enabledBodyParts = new(); // TODO: only one bodypart can be enabled
+			Sandbox.Texture[][] textures;
+			bool[][] enabledSubmodels; // Contains submodel meshes
+			int[][] enabledMeshes; // Contains submodel mesh map
+			public bool[] enabledBodyParts; // TODO: only one bodypart can be enabled
 			public int activeSequence = 0;
 			public float frameRate = 60.0f;  //60fps, added fps from entity but is fps from sequences (or from header) needed?, is it needed bbmax bbmin for physics?
 			double frameState = 0.0f;
@@ -71,7 +70,7 @@ namespace MapParser.GoldSrc.Entities
 			public MDLEntity_SV parent;
 			//private Texture lightmap;
 
-			public MDLEntity_CL( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Sandbox.Texture, List<float[]>)>> bodyParts, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities ) : base( settings.sceneWorld )
+			public MDLEntity_CL( ref List<List<(float[][][], float[], int, Sandbox.Texture, List<float[]>)>> bodyParts, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities ) : base( settings.sceneWorld )
 			{
 				Flags.IsOpaque = true;
 				Flags.IsTranslucent = false;
@@ -138,27 +137,39 @@ namespace MapParser.GoldSrc.Entities
 
 				bool initializeMinsMaxs = true;
 				ushort meshBatchSize = 612;
-				
-				foreach ( var bodypart in bodyParts )
-				{
-					List< List < List <List<VertexBuffer>>>> submodelList = new();
-					List<bool> enabledSubmodel = new();
-					List<int> enabledMesh = new();
 
-					foreach ( var submodel in bodypart )
+				vertexBuffers = new VertexBuffer[bodyParts.Count][][][][];
+				textures = new Sandbox.Texture[bodyParts.Count][];
+				enabledBodyParts = new bool[bodyParts.Count];
+				enabledMeshes = new int[bodyParts.Count][];
+				enabledSubmodels = new bool[bodyParts.Count][];
+
+				for ( var bi = 0; bi < bodyParts.Count; bi++ )
+				{
+					var bodypart = bodyParts[bi];
+					VertexBuffer[][][][] submodelList = new VertexBuffer[bodypart.Count][][][];
+					bool[] enabledSubmodel = new bool[bodypart.Count];
+					int[] enabledMesh = new int[bodypart.Count];
+					var textureBodyPart = new Sandbox.Texture[bodypart.Count];
+
+					for ( var si = 0; si < bodypart.Count; si++ )
 					{
-						var uvArray = submodel.Item2.Array.ToArray();
+						var submodel = bodypart[si];
+						var uvArray = submodel.Item2;
 						//var lightDataArray = submodel.Item3.Array.ToArray();
 
-						List<List<List<VertexBuffer>>> animationList = new();
+						VertexBuffer[][][] animationList = new VertexBuffer[submodel.Item1.Length][][];
 
-						foreach ( var animations in submodel.Item1 )
+						for ( var ai = 0; ai < submodel.Item1.Length; ai++ )
 						{
-							List<List<VertexBuffer>> frameList = new();
+							var animations = submodel.Item1[ai];
 
-							foreach ( var frames in animations )
+							VertexBuffer[][] frameList = new VertexBuffer[animations.Length][];
+
+							for ( var fi = 0; fi < animations.Length; fi++ )
 							{
-								var meshArray = frames.Array.ToArray();
+								var frames = animations[fi];
+								var meshArray = frames;
 
 								// Flipping mesh and uv's
 								float[] vertices = meshArray;
@@ -199,11 +210,11 @@ namespace MapParser.GoldSrc.Entities
 
 								meshArray = vertices;
 
-								List<VertexBuffer> vbList = new();
-
 								// VertexBuffer has limitation (65536), I think max ~862 vertices can be added but coming too much, so need segmentation
 								float[][] subArrays = Enumerable.Range( 0, (int)Math.Ceiling( (float)meshArray.Length / meshBatchSize ) )
 								.Select( i => meshArray.Skip( i * meshBatchSize ).Take( meshBatchSize ).ToArray() ).ToArray(); //.AsParallel()
+
+								VertexBuffer[] vbList = new VertexBuffer[subArrays.Length];
 
 								var uvIndex = 0;
 								//var lightsIndex = 0;
@@ -253,29 +264,30 @@ namespace MapParser.GoldSrc.Entities
 										vb.Add( new Vertex( vec, Vector3.Zero, Vector3.Right, new Vector2( uvs[uvIndex++], uvs[uvIndex++] ) ) );
 									}
 
-									vbList.Add( vb );
+									vbList[i] = vb;
 								}
 
-								frameList.Add( vbList );
+								frameList[fi] = vbList;
 							}
-							animationList.Add( frameList );
+							animationList[ai] = frameList;
 						}
 
-						submodelList.Add( animationList );
-						textures.Add( submodel.Item4 );
-						enabledSubmodel.Add( false );
-						enabledMesh.Add( submodel.Item3 );
+						submodelList[si] = animationList;
+						textureBodyPart[si] = submodel.Item4;
+						enabledSubmodel[si] = false;
+						enabledMesh[si] = submodel.Item3;
 					}
-					enabledSubmodels.Add( enabledSubmodel );
-					enabledMeshes.Add( enabledMesh );
-					vertexBuffers.Add( submodelList );
-					enabledBodyParts.Add( false );
+					enabledSubmodels[bi] = enabledSubmodel;
+					enabledMeshes[bi] = enabledMesh;
+					vertexBuffers[bi] = submodelList;
+					textures[bi] = textureBodyPart;
+					enabledBodyParts[bi] = false;
 				}
 
 				// TODO: get which bodypart get used from entData
-				if( enabledBodyParts.Count > 0)
+				if( enabledBodyParts.Length > 0)
 				{ 
-					if ( entData.data.TryGetValue( "bodypart", out var bodypart ) && enabledBodyParts.Count > int.Parse(bodypart) ) //custom
+					if ( entData.data.TryGetValue( "bodypart", out var bodypart ) && enabledBodyParts.Length > int.Parse(bodypart) ) //custom
 							enabledBodyParts[int.Parse( bodypart )] = true;
 					else
 						enabledBodyParts[0] = true;
@@ -283,7 +295,7 @@ namespace MapParser.GoldSrc.Entities
 
 				// TODO: get which submodels get used from entData
 
-				if ( entData.data.TryGetValue( "submodel", out var submodelVal ) && enabledBodyParts.Count > int.Parse( submodelVal ) ) //custom
+				if ( entData.data.TryGetValue( "submodel", out var submodelVal ) && enabledBodyParts.Length > int.Parse( submodelVal ) ) //custom
 					ChangeSubmodel( int.Parse( submodelVal ) );
 				else
 					ChangeSubmodel( 0 );
@@ -293,7 +305,7 @@ namespace MapParser.GoldSrc.Entities
 
 			int GetActiveBodyPartIndex() {
 
-				for ( int i = 0; i < enabledBodyParts.Count; i++ )
+				for ( int i = 0; i < enabledBodyParts.Length; i++ )
 					if ( enabledBodyParts[i] )
 						return i;
 
@@ -309,7 +321,7 @@ namespace MapParser.GoldSrc.Entities
 
 				var index = 0;
 				var subModelind = 0;
-				for ( var i = 0; i < enabledMeshes[bodyPartIndex].Count; i++ )
+				for ( var i = 0; i < enabledMeshes[bodyPartIndex].Length; i++ )
 				{
 					if( index == 0 )
 					{
@@ -332,7 +344,7 @@ namespace MapParser.GoldSrc.Entities
 				List<bool> subModelList = new();
 
 				var index = 0;
-				for ( var i = 0; i < enabledMeshes[bodyPartIndex].Count; i++ )
+				for ( var i = 0; i < enabledMeshes[bodyPartIndex].Length; i++ )
 				{
 					if ( index == 0 )
 					{
@@ -404,17 +416,17 @@ namespace MapParser.GoldSrc.Entities
 				//Graphics.Attributes.Set( "TextureLightmap", Texture.Transparent );
 				Graphics.Attributes.Set( "Color", renderColor );
 
-				for ( int i = 0; i < enabledBodyParts.Count; i++ )
+				for ( int i = 0; i < enabledBodyParts.Length; i++ )
 				{
 					if ( !enabledBodyParts[i] )
 						continue;
 
-					for ( int j = 0; j < enabledSubmodels[i].Count; j++ )
+					for ( int j = 0; j < enabledSubmodels[i].Length; j++ )
 					{
 						if ( !enabledSubmodels[i][j] )
 							continue;
 
-						Graphics.Attributes.Set( "TextureDiffuse", textures[j] );
+						Graphics.Attributes.Set( "TextureDiffuse", (Sandbox.Texture) textures[i][j] ); // TODO: make an issue about it
 
 						if ( vertexBuffers == null ) // remove
 						{
@@ -423,11 +435,11 @@ namespace MapParser.GoldSrc.Entities
 						}
 						var animation = vertexBuffers[i][j][activeSequence];
 
-						if ( frameState > animation.Count - 1 )
+						if ( frameState > animation.Length - 1 )
 							frameState = 0;
 
 						var vb = animation[(int)frameState];
-						for ( var l = 0; l < vb.Count; l++ )
+						for ( var l = 0; l < vb.Length; l++ )
 						{
 							//DebugOverlay.Box( Bounds.Mins, Bounds.Maxs, Color.Blue );
 							vb[l].Draw( renderMat );
@@ -443,7 +455,7 @@ namespace MapParser.GoldSrc.Entities
 		public class MDLEntity_SV : ModelEntity //KeyframeEntity
 		{
 			public MDLEntity_SV() { }
-			public MDLEntity_SV( ref List<List<(BufferAttribute<float>[][], BufferAttribute<float>, int, Sandbox.Texture, List<float[]>)>> bodyGroups, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings )
+			public MDLEntity_SV( ref List<List<(float[][][], float[], int, Sandbox.Texture, List<float[]>)>> bodyGroups, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings )
 			{
 				// We are using first animation frame of models as physics, in the future.
 				// Because complex models will be trouble for server.
@@ -460,7 +472,7 @@ namespace MapParser.GoldSrc.Entities
 						{
 							foreach ( var frames in animations )
 							{
-								var meshArray = frames.Array.ToArray();
+								var meshArray = frames;
 
 								for ( var i = 0; i < meshArray.Length / 3; i++ )
 								{

@@ -1173,7 +1173,7 @@ namespace MapParser
 
 		}
 
-		[ConCmd.Client( "test1" )]
+		[ConCmd.Client( "test11" )]
 		public static void testsource1()
 		{
 			var buffer = FileSystem.Data.ReadAllBytes( "d1_canals_01.bsp" ).ToArray();
