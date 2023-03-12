@@ -26,7 +26,7 @@ namespace MapParser.GoldSrc.Entities
 			return vertCount;
 		}
 
-		public static (float[] vertices, float[] uv, short[] indices, List<float[]> vertexList_sv) ReadFacesData( ref short[] trianglesBuffer, ref float[] verticesBuffer ) // , ref Structs.Texture texture , float[] lights
+		public static (float[] vertices, float[] uv, short[] indices, float[][] vertexList_sv) ReadFacesData( ref short[] trianglesBuffer, ref float[] verticesBuffer ) // , ref Structs.Texture texture , float[] lights
 		{
 			// Number of vertices for generating buffer
 			int vertNumber = CountVertices( trianglesBuffer );
@@ -170,7 +170,7 @@ namespace MapParser.GoldSrc.Entities
 				indices[i] = (short)verticesData[i][5];
 			}
 
-			return (vertices, uv, indices, vertexDataList); //, lights
+			return (vertices, uv, indices, vertexDataList.ToArray()); //, lights
 		}
 	}
 }

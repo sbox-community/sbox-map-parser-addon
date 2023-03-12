@@ -153,7 +153,7 @@
 		Model.Update(0.1f);
 	}*/
 
-	public MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL SetModel(ref string key, ref (List<List<(float[][][], float[], int, Texture, List<float[]>)>>, GoldSrc.Entities.ModelDataParser.ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data, int bodypart = 0, bool forceSpawn = false) {
+	public MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL SetModel(ref string key, ref ((float[][][], float[], int, Texture, float[][])[][], GoldSrc.Entities.ModelDataParser.ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data, int bodypart = 0, bool forceSpawn = false) {
 
 		if (Model != null) {
 			Model.render = false;

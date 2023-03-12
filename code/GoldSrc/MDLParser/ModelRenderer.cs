@@ -18,11 +18,11 @@ namespace MapParser.GoldSrc.Entities
 	public static class ModelRenderer
 	{
 		// TODO: convert to struct
-		public static Dictionary<string, (List<List<(float[][][], float[], int, Texture, List<float[]>)>>, ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MDLEntity)> ModelCache = new();
+		public static Dictionary<string, ((float[][][], float[], int, Texture, float[][])[][], ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MDLEntity)> ModelCache = new();
 
 		public static void clearModelCache()
 		{
-			foreach(var model in ModelCache)
+			foreach ( var model in ModelCache )
 				if ( model.Value.Item5 != null && model.Value.Item5.CL != null && model.Value.Item5.CL.IsValid() )
 					model.Value.Item5.Delete();
 			ModelCache.Clear();
@@ -37,7 +37,7 @@ namespace MapParser.GoldSrc.Entities
 			public float[] uvMap { get; set; }
 			//public float[] lightData { get; set; }
 			//For Server ( might be removed )
-			public List<float[]> collisionMeshData { get; set; }
+			public float[][] collisionMeshData { get; set; }
 		}
 
 		/**
@@ -47,7 +47,7 @@ namespace MapParser.GoldSrc.Entities
 			ref float[] vertices,
 			ref short[] vertIndices,
 			ref byte[] vertBoneBuffer,
-			ref List<Matrix4x4> boneTransforms
+			ref Matrix4x4[] boneTransforms
 		)
 		{
 			var posArray = new float[vertices.Length];
@@ -71,108 +71,42 @@ namespace MapParser.GoldSrc.Entities
 				posArray[i * 3 + 2] = (transform.M13 * x + transform.M23 * y + transform.M33 * z + transform.M43) / w;
 			}
 
-			
+
 			return posArray;
 		}
 
-
-		/*public static Structs.Mesh[][][] CreateModelMeshes( ref MeshRenderData[][][] meshesRenderData, ModelDataParser.ModelParser modelData, ref List<ushort[]> textureBuffers )
+		public static (float[][][], float[], int, Texture, float[][])[][] CreateModelEntity( ref MeshRenderData[][][] meshesRenderData, ModelDataParser.ModelParser modelData, ref ushort[][] textureBuffers, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
 		{
-			List<Sandbox.Texture> textures = textureBuffers.Select( ( textureBuffer, textureIndex ) => {
-				return Sandbox.Texture.Create( modelData.textures[textureIndex].width, modelData.textures[textureIndex].height ).WithData( textureBuffer.Select( x => (byte)x ).ToArray() ).Finish();
-			} ).ToList();
-
-			List<Structs.Mesh[][]> modelMeshes = new List<Structs.Mesh[][]>( meshesRenderData.Length );
-
-			for ( int bodyPartIndex = 0; bodyPartIndex < meshesRenderData.Length; bodyPartIndex++ )
+			Texture[] textures = null;
+			if ( Game.IsClient )
 			{
-				List<Structs.Mesh[]> bodyPartMeshes = new List<Structs.Mesh[]>( meshesRenderData[bodyPartIndex].Length );
-
-				for ( int subModelIndex = 0; subModelIndex < meshesRenderData[bodyPartIndex].Length; subModelIndex++ )
+				textures = textureBuffers.Select( ( textureBuffer, textureIndex ) =>
 				{
-					List<Structs.Mesh> subModelMeshes = new List<Structs.Mesh>( meshesRenderData[bodyPartIndex][subModelIndex].Length );
-
-					var i = 0;
-					foreach ( MeshRenderData subModel in meshesRenderData[bodyPartIndex][subModelIndex] )
-					{
-						float[][][] geometryBuffers = subModel.geometryBuffers;
-						float[] uvMap = subModel.uvMap;
-						float[] initialGeometryBuffer = geometryBuffers[0][0];
-						int skinRef = modelData.meshes[bodyPartIndex][subModelIndex][i++].skinRef;
-						int textureIndex = modelData.skinRef[skinRef];
-						Sandbox.Texture texture = textures[textureIndex];
-
-						subModelMeshes.Add( CreateMesh( initialGeometryBuffer, uvMap, texture ) );
-					}
-
-					bodyPartMeshes.Add( subModelMeshes.ToArray() );
-				}
-
-				modelMeshes.Add( bodyPartMeshes.ToArray() );
+					return TextureCache.addTexture( textureBuffer.Select( x => (byte)x ).ToArray(), $"{modelData.header.name}_{textureIndex}", modelData.textures[textureIndex].width, modelData.textures[textureIndex].height, Util.PathToMapNameWithExtension( modelData.header.name ) ); //Sandbox.Texture.Create( modelData.textures[textureIndex].width, modelData.textures[textureIndex].height ).WithData( textureBuffer.Select( x => (byte)x ).ToArray() ).Finish();
+				} ).ToArray();
 			}
-
-			return modelMeshes.ToArray();
-		}*/
-
-		public static List<List<(float[][][], float[], int, Texture, List<float[]>)>>  CreateModelEntity( ref MeshRenderData[][][] meshesRenderData, ModelDataParser.ModelParser modelData, ref List<ushort[]> textureBuffers, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
-		{
-			List<Texture> textures = new();
-			if (Game.IsClient) { 
-				textures = textureBuffers.Select( ( textureBuffer, textureIndex ) => {
-					return TextureCache.addTexture( textureBuffer.Select( x => (byte)x ).ToArray(), $"{modelData.header.name}_{textureIndex}" , modelData.textures[textureIndex].width, modelData.textures[textureIndex].height, Util.PathToMapNameWithExtension(modelData.header.name) ); //Sandbox.Texture.Create( modelData.textures[textureIndex].width, modelData.textures[textureIndex].height ).WithData( textureBuffer.Select( x => (byte)x ).ToArray() ).Finish();
-				} ).ToList();
-			}
-			List<List<(float[][][], float[], int, Texture, List<float[]>)>> meshes = new(); //float[],
+			(float[][][], float[], int, Texture, float[][])[][] meshes = new (float[][][], float[], int, Texture, float[][])[meshesRenderData.Length][]; //float[],
 			for ( int bodyPartIndex = 0; bodyPartIndex < meshesRenderData.Length; bodyPartIndex++ )
 			{
-				List<(float[][][], float[], int, Texture, List<float[]>)> submodels = new();
+				List<(float[][][], float[], int, Texture, float[][])> submodels = new();
 				for ( int subModelIndex = 0; subModelIndex < meshesRenderData[bodyPartIndex].Length; subModelIndex++ )
 				{
 					var i = 0;
-					foreach ( MeshRenderData subModel in meshesRenderData[bodyPartIndex][subModelIndex] )
+					foreach ( MeshRenderData mesh in meshesRenderData[bodyPartIndex][subModelIndex] )
 					{
-						float[][][] geometryBuffers = subModel.geometryBuffers;
-						float[] uvMap = subModel.uvMap;
-						//float[] lightData = subModel.lightData;
+						float[][][] geometryBuffers = mesh.geometryBuffers;
+						float[] uvMap = mesh.uvMap;
+						//float[] lightData = mesh.lightData;
 						int skinRef = modelData.meshes[bodyPartIndex][subModelIndex][i++].skinRef;
 						int textureIndex = modelData.skinRef.Count() <= skinRef ? -1 : modelData.skinRef[skinRef];
 
-						submodels.Add( (geometryBuffers, uvMap, meshesRenderData[bodyPartIndex][subModelIndex].Length, Game.IsClient ? (textureIndex == -1 ? null : textures[textureIndex]) : null, subModel.collisionMeshData) ); //lightData, 
+						submodels.Add( (geometryBuffers, uvMap, meshesRenderData[bodyPartIndex][subModelIndex].Length, Game.IsClient ? (textureIndex == -1 ? null : textures[textureIndex]) : null, mesh.collisionMeshData) ); //lightData, 
 					}
 				}
-				meshes.Add( submodels );
+				meshes[bodyPartIndex] = submodels.ToArray(); // Might cause lack of performance
 			}
 			return meshes;
 		}
-
-			/*private static Structs.Mesh CreateMesh( float[] initialGeometryBuffer, float[] uvMap, Sandbox.Texture texture )
-			{
-				var meshArray = initialGeometryBuffer.Array.ToArray();
-				var uvArray = uvMap.Array.ToArray();
-
-				VertexBuffer vb = new();
-				vb.Init( false );
-
-				for (var ii = 0;  ii < meshArray.Count()/3; ii++)
-					vb.Add(new Vertex( new Vector3( meshArray[ii*3], meshArray[ii * 3 + 1], meshArray[ii * 3 + 2] ), new Vector2( uvArray[ii * 2], uvArray[ii * 2 + 1] ), Color.White ) );
-
-				var mat = Material.Create( "test", "simple" );
-				mat.Set( "Color", texture );
-				mat.Set( "g_vColorTint", Color.White );
-				mat.Set( "g_flMetalness", 1.0f );
-				mat.Set( "Roughness", Texture.White );
-				mat.Set( "Normal", Texture.Transparent );
-
-				var mesh = new Sandbox.Mesh( mat );
-				mesh.CreateBuffers(vb);
-
-				var mb = new ModelBuilder();
-				mb.AddMesh( mesh );
-
-				Structs.Mesh meshes = new Structs.Mesh( );/// geometry, material
-
-				return meshes;
-			}*/
 
 		public async static Task<MeshRenderData[][][]> PrepareRenderData( ModelDataParser.ModelParser modelData )
 		{
@@ -195,11 +129,11 @@ namespace MapParser.GoldSrc.Entities
 						//int textureIndex = modelData.skinRef[modelData.meshes[bodyPartIndex][subModelIndex][meshIndex].skinRef];
 
 						// Unpack faces of the mesh, Vertices, UV, indices, lights
-						(float[], float[], short[], List<float[]>) meshFacesData = geometryBuilder.ReadFacesData(
+						(float[], float[], short[], float[][]) meshFacesData = geometryBuilder.ReadFacesData(
 							ref modelData.triangles[bodyPartIndex][subModelIndex][meshIndex],
 							ref modelData.vertices[bodyPartIndex][subModelIndex]
-							//ref modelData.textures[textureIndex]
-							//ref lightmap
+						//ref modelData.textures[textureIndex]
+						//ref lightmap
 						);
 
 						// Very expensive
@@ -215,14 +149,14 @@ namespace MapParser.GoldSrc.Entities
 							collisionMeshData = meshFacesData.Item4,
 
 							// List of mesh buffer for each frame of each sequence
-							geometryBuffers = modelData.sequences.Select( (sequence , sequenceIndex ) =>
+							geometryBuffers = modelData.sequences.Select( ( sequence, sequenceIndex ) =>
 							{
-								List<float[]> bufferAttributes = new List<float[]>();
+								float[][] bufferAttributes = new float[sequence.numFrames][];
 
 								for ( int frame = 0; frame < sequence.numFrames; frame++ )
 								{
-									List<Matrix4x4> boneTransforms = GeometryTransformer.CalcRotations( ref modelData, ref sequenceIndex, ref frame ); // expensive
-									
+									Matrix4x4[] boneTransforms = GeometryTransformer.CalcRotations( ref modelData, ref sequenceIndex, ref frame ); // expensive
+
 									float[] transformedVertices = ApplyBoneTransforms(
 										ref meshFacesData.Item1,
 										ref meshFacesData.Item3,
@@ -230,13 +164,13 @@ namespace MapParser.GoldSrc.Entities
 										ref boneTransforms
 									);
 
-									bufferAttributes.Add( transformedVertices );
+									bufferAttributes[frame] = transformedVertices;
 
 									if ( Game.IsServer )
 										break;
 								}
 
-								return bufferAttributes.ToArray();
+								return bufferAttributes;
 							} ).ToArray()
 						};
 
@@ -251,180 +185,5 @@ namespace MapParser.GoldSrc.Entities
 
 			return renderData;
 		}
-
-		//	/**
-		//	 * Returns generated mesh buffers and UV-maps of each frame of each sequence of
-		//	 * the model
-		//	 * @param modelData Model data
-		//	 */
-		//	public static MeshRenderData[][][] PrepareRenderData( ModelData modelData )
-		//	{
-		//		MeshRenderData[][][] renderData = new MeshRenderData[modelData.BodyParts.Length][][];
-		//
-		//		for ( int bodyPartIndex = 0; bodyPartIndex < modelData.BodyParts.Length; bodyPartIndex++ )
-		//		{
-		//			renderData[bodyPartIndex] = new MeshRenderData[modelData.SubModels[bodyPartIndex].Length][];
-		//
-		//			for ( int subModelIndex = 0; subModelIndex < modelData.SubModels[bodyPartIndex].Length; subModelIndex++ )
-		//			{
-		//				renderData[bodyPartIndex][subModelIndex] = new MeshRenderData[modelData.Meshes[bodyPartIndex][subModelIndex].Length];
-		//
-		//				for ( int meshIndex = 0; meshIndex < modelData.Meshes[bodyPartIndex][subModelIndex].Length; meshIndex++ )
-		//				{
-		//					int textureIndex = modelData.SkinRef[modelData.Meshes[bodyPartIndex][subModelIndex][meshIndex].SkinRef];
-		//
-		//					// Unpack faces of the mesh
-		//					(float[] vertices, float[] uv, short[] indices) = ReadFacesData(
-		//					  modelData.Triangles[bodyPartIndex][subModelIndex][meshIndex],
-		//					  modelData.Vertices[bodyPartIndex][subModelIndex],
-		//					  modelData.Textures[textureIndex]
-		//					);
-		//
-		//					MeshRenderData meshRenderData = new MeshRenderData();
-		//					meshRenderData.uvMap = new BufferAttribute( uv, 2 );
-		//					meshRenderData.geometryBuffers = new BufferAttribute[modelData.Sequences.Length][];
-		//
-		//					for ( int sequenceIndex = 0; sequenceIndex < modelData.Sequences.Length; sequenceIndex++ )
-		//					{
-		//						meshRenderData.geometryBuffers[sequenceIndex] = new BufferAttribute[modelData.Sequences[sequenceIndex].NumFrames];
-		//
-		//						for ( int frame = 0; frame < modelData.Sequences[sequenceIndex].NumFrames; frame++ )
-		//						{
-		//							mat4[] boneTransforms = CalcRotations( modelData, sequenceIndex, frame );
-		//							float[] transformedVertices = ApplyBoneTransforms(
-		//							  vertices,
-		//							  indices,
-		//							  modelData.VertBoneBuffer[bodyPartIndex][subModelIndex],
-		//							  boneTransforms
-		//							);
-		//							meshRenderData.geometryBuffers[sequenceIndex][frame] = new BufferAttribute( transformedVertices, 3 );
-		//						}
-		//					}
-		//
-		//					renderData[bodyPartIndex][subModelIndex][meshIndex] = meshRenderData;
-		//				}
-		//			}
-		//		}
-		//
-		//		return renderData;
-		//	}
-		//
-		//
-		//public static GameObject CreateMesh(
-		//	THREE.BufferAttribute geometryBuffer,
-		//	THREE.BufferAttribute uvMap,
-		//	THREE.Texture texture
-		//)
-		//	{
-		//		// Mesh level
-		//		var material = new THREE.MeshBasicMaterial
-		//		{
-		//			map = texture,
-		//			side = THREE.DoubleSide,
-		//			transparent = true,
-		//			alphaTest = 0.5f,
-		//			morphTargets = true,
-		//			skinning = true
-		//			// color = new Color(1, 1, 1)
-		//		};
-		//
-		//		// Prepare geometry
-		//		var geometry = new THREE.BufferGeometry();
-		//		geometry.SetAttribute( "position", geometryBuffer );
-		//		geometry.SetAttribute( "uv", uvMap );
-		//
-		//		// Prepare mesh
-		//		var mesh = new THREE.Mesh( geometry, material );
-		//
-		//		// Create a GameObject to hold the mesh
-		//		var meshObject = new GameObject( "Mesh" );
-		//		meshObject.AddComponent<MeshFilter>().mesh = mesh;
-		//		meshObject.AddComponent<MeshRenderer>().material = material;
-		//
-		//		return meshObject;
-		//	}
-		//
-		//	/**
-		//	* Creates list of meshes of every submodel
-		//	*/
-		//	public static List<List<List<Mesh>>> CreateModelMeshes(
-		//		MeshRenderData[][][] meshesRenderData,
-		//		ModelData modelData,
-		//		List<byte[]> textureBuffers
-		//	)
-		//	{
-		//		List<Texture2D> textures = textureBuffers.ConvertAll( textureBuffer => {
-		//			Texture2D texture = new Texture2D(
-		//				modelData.textures[textureBuffers.IndexOf( textureBuffer )].width,
-		//				modelData.textures[textureBuffers.IndexOf( textureBuffer )].height,
-		//				TextureFormat.RGBA32,
-		//				false
-		//			);
-		//			texture.LoadRawTextureData( textureBuffer );
-		//			texture.Apply();
-		//			return texture;
-		//		} );
-		//
-		//		List<List<List<Mesh>>> modelMeshes = new List<List<List<Mesh>>>();
-		//		for ( int bodyPartIndex = 0; bodyPartIndex < meshesRenderData.Length; bodyPartIndex++ )
-		//		{
-		//			List<List<Mesh>> bodyPartMeshes = new List<List<Mesh>>();
-		//			modelMeshes.Add( bodyPartMeshes );
-		//			for ( int subModelIndex = 0; subModelIndex < meshesRenderData[bodyPartIndex].Length; subModelIndex++ )
-		//			{
-		//				List<Mesh> subModelMeshes = new List<Mesh>();
-		//				bodyPartMeshes.Add( subModelMeshes );
-		//				for ( int meshIndex = 0; meshIndex < meshesRenderData[bodyPartIndex][subModelIndex].Length; meshIndex++ )
-		//				{
-		//					MeshRenderData meshRenderData = meshesRenderData[bodyPartIndex][subModelIndex][meshIndex];
-		//					BufferAttribute uvMap = meshRenderData.uvMap;
-		//					List<BufferAttribute[]> geometryBuffers = meshRenderData.geometryBuffers;
-		//					BufferAttribute initialGeometryBuffer = geometryBuffers[0][0];
-		//					byte skinRef = modelData.meshes[bodyPartIndex][subModelIndex][meshIndex].skinRef;
-		//					byte textureIndex = modelData.skinRef[skinRef];
-		//					Texture2D texture = textures[textureIndex];
-		//					Mesh mesh = CreateMesh( initialGeometryBuffer, uvMap, texture );
-		//					subModelMeshes.Add( mesh );
-		//				}
-		//			}
-		//		}
-		//
-		//		return modelMeshes;
-		//	}
-		//
-		//
-		//	/*public static GameObject CreateContainer( List<List<List<MeshRendererData>>> meshes )
-		//	{
-		//		var container = new GameObject( "Model" );
-		//
-		//		// Adding meshes to the container
-		//		foreach ( var bodyPart in meshes )
-		//		{
-		//			// Body part level
-		//			foreach ( var subModel in bodyPart )
-		//			{
-		//				// Sub model level
-		//				foreach ( var meshData in subModel )
-		//				{
-		//					var mesh = CreateMesh( meshData.GeometryBuffers[0][0], meshData.UvMap, meshData.Texture );
-		//					mesh.transform.parent = container.transform;
-		//				}
-		//			}
-		//		}
-		//
-		//		// Sets to display the front of the model
-		//		container.transform.rotation = Quaternion.Euler( -90f, -90f, 0f );
-		//
-		//		// Sets to display model on the center of camera
-		//		var bounds = new Bounds( container.transform.position, Vector3.zero );
-		//		foreach ( var renderer in container.GetComponentsInChildren<MeshRenderer>() )
-		//		{
-		//			bounds.Encapsulate( renderer.bounds );
-		//		}
-		//		container.transform.position -= new Vector3( 0f, (bounds.min.y + bounds.max.y) / 2f, 0f );
-		//
-		//		return container;
-
 	}
 }
-//

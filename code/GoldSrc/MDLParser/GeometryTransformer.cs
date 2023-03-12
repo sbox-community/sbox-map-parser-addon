@@ -10,30 +10,6 @@ namespace MapParser.GoldSrc.Entities
 {
 	public static class GeometryTransformer
 	{
-		/**
-		 * Converts Euler angles into a quaternion
-		 */
-		/*public static Vector4 AnglesToQuaternion( Vector3 angles )
-		{
-			float pitch = angles.x;
-			float roll = angles.y;
-			float yaw = angles.z;
-
-			// FIXME: rescale the inputs to 1/2 angle
-			float cy = MathF.Cos( yaw * 0.5f );
-			float sy = MathF.Sin( yaw * 0.5f );
-			float cp = MathF.Cos( roll * 0.5f );
-			float sp = MathF.Sin( roll * 0.5f );
-			float cr = MathF.Cos( pitch * 0.5f );
-			float sr = MathF.Sin( pitch * 0.5f );
-
-			return new Vector4(
-				sr * cp * cy - cr * sp * sy, // X
-				cr * sp * cy + sr * cp * sy, // Y
-				cr * cp * sy - sr * sp * cy, // Z
-				cr * cp * cy + sr * sp * sy // W
-			);
-		}*/
 
 		/**
 		 * Calculates bone angle
@@ -158,6 +134,9 @@ namespace MapParser.GoldSrc.Entities
 			return Quaternion.Slerp( q1, q2, s );//Quaternion.Slerp( q1, q2, s );
 		}
 
+		/**
+		 * Converts Euler angles into a quaternion
+		 */
 		private static Quaternion AnglesToQuaternion( ref Vector3 angles )
 		{
 			var pitch = angles.x;
@@ -179,7 +158,6 @@ namespace MapParser.GoldSrc.Entities
 
 			return result;
 		}
-
 
 		public static Vector3 GetBonePositions(
 			//int frame,
@@ -237,7 +215,7 @@ namespace MapParser.GoldSrc.Entities
 			return position;
 		}
 
-		public static List<Matrix4x4> CalcRotations(
+		public static Matrix4x4[] CalcRotations(
 			ref ModelDataParser.ModelParser modelData,
 			ref int sequenceIndex,
 			ref int frame,
@@ -245,18 +223,17 @@ namespace MapParser.GoldSrc.Entities
 			float s = 0f
 		)
 		{
-			List<Quaternion> boneQuaternions = new List<Quaternion>();
-
-			List<Vector3> bonesPositions = new List<Vector3>();
-
 			var bonesLength = modelData.bones.Length;
+			
+			Quaternion[] boneQuaternions = new Quaternion[bonesLength];
+			Vector3[] bonesPositions = new Vector3[bonesLength];
 
 			for ( int boneIndex = 0; boneIndex < bonesLength; boneIndex++ )
 			{
 				var bones = modelData.bones[boneIndex];
 				var offsets = modelData.animations[sequenceIndex][boneIndex].offset;
 
-				boneQuaternions.Add( CalcBoneQuaternion(
+				boneQuaternions[boneIndex] = CalcBoneQuaternion(
 					ref frame,
 					ref bones,
 					ref offsets,
@@ -264,9 +241,9 @@ namespace MapParser.GoldSrc.Entities
 					sequenceIndex,
 					boneIndex,
 					ref s
-				));
+				);
 
-				bonesPositions.Add( GetBonePositions(
+				bonesPositions[boneIndex] = GetBonePositions(
 					ref bones
 				/*frame,
 				modelData.bones[boneIndex],
@@ -275,7 +252,7 @@ namespace MapParser.GoldSrc.Entities
 				sequenceIndex,
 				boneIndex,
 				s*/
-				) );
+				);
 			}
 
 			foreach ( int axis in new int[] { MOTION_X, MOTION_Y, MOTION_Z} )
@@ -291,14 +268,14 @@ namespace MapParser.GoldSrc.Entities
 			return CalcBoneTransforms( ref boneQuaternions, ref bonesPositions, ref modelData.bones );
 		}
 
-		private static List<Matrix4x4> CalcBoneTransforms(
-			ref List<Quaternion> quaternions,
-			ref List<Vector3> positions,
+		private static Matrix4x4[] CalcBoneTransforms(
+			ref Quaternion[] quaternions,
+			ref Vector3[] positions,
 			ref Bone[] bones
 		)
 		{
-			List<Matrix4x4> boneTransforms = new List<Matrix4x4>();
 			var bonesLength = bones.Length;
+			Matrix4x4[] boneTransforms = new Matrix4x4[bonesLength];
 
 			for ( int i = 0; i < bonesLength; i++ )
 			{
@@ -313,11 +290,11 @@ namespace MapParser.GoldSrc.Entities
 				if ( bones[i].parent == -1 )
 				{
 					// Root bone
-					boneTransforms.Add( boneMatrix );
+					boneTransforms[i] = boneMatrix;
 				}
 				else
 				{
-					boneTransforms.Add( boneMatrix * boneTransforms[bones[i].parent] ); // Multiplication order is important
+					boneTransforms[i] = boneMatrix * boneTransforms[bones[i].parent]; // Multiplication order is important
 				}
 			}
 			return boneTransforms;

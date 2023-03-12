@@ -240,7 +240,7 @@
 						box-shadow: 0px 0px 10px 3px rgba(25, 25, 25, 0.9);
 						background-color: #afafaf;
 
-						.tab_4_3
+						.tab_4_4
 						{
 							flex-direction: column;
 							margin:10px;
@@ -384,7 +384,11 @@
 							<ModelViewer @ref="modelviewer"></ModelViewer>
 						</div>
 					</div>
-					<div style="display:none;" class="tab_4_3" @ref="tab_4_3">
+					<div style="display:none;flex-direction:column" class="tab_4" @ref="tab_4_3">
+						<MapHistoryList style="height:85%;margin-bottom:3%" @ref="maphistorylist"></MapHistoryList>
+						<Button style="width:98%;height:5%" tooltip="Spawn History Map" @onclick=@(() => maphistorylist.spawn())><i>remove_circle</i> Spawn </Button>
+					</div>
+					<div style="display:none;" class="tab_4_4" @ref="tab_4_4">
 						<div style="width:100%;height:7%;">
 							<Button style="width:80%;" tooltip="Clear Mirrors cache.." @onclick=@(() => clearMirrorsFileCache())><i>remove_circle</i> Clear Mirror's File Cache ( Local ) </Button>
 						</div>
@@ -399,6 +403,9 @@
 						</div>
 						<div style="width:100%;height:7%;">
 							<Button style="width:80%;" tooltip="Clear Model cache.." @onclick=@(() => MapParser.GoldSrc.Entities.ModelRenderer.clearModelCache())><i>remove_circle</i> Clear Models Cache ( Local ) </Button>
+						</div>
+						<div style="width:100%;height:7%;">
+							<Button style="width:80%;" tooltip="Clear Map History.." @onclick=@(() => MapParser.Manager.ClearMapHistory())><i>remove_circle</i> Clear Map History ( Local ) </Button>
 						</div>
 						<div style="width:100%;height:2%;"></div>
 						<div style="flex-direction:row;width:100%;height:7%;">
@@ -468,6 +475,7 @@
 	public ModelSubModelList modelsubmodellist { get; set; }
 	public ModelSequenceList modelsequencelist { get; set; }
 	public Panel modelViewerSideMenu { get; set; }
+	public MapHistoryList maphistorylist { get; set; }
 	ScrollBar scrollBarMV { get; set; }
 	public Panel tab_1 { get; set; }
 	public Panel tab_2 { get; set; }
@@ -477,6 +485,7 @@
 	public Panel tab_4_1 { get; set; }
 	public Panel tab_4_2 { get; set; }
 	public Panel tab_4_3 { get; set; }
+	public Panel tab_4_4 { get; set; }
 	public Panel tab_5 { get; set; }
 	public Panel tab_6 { get; set; }
 	public string selectedWAD = "None";

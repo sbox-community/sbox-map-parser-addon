@@ -15,7 +15,7 @@ namespace MapParser.GoldSrc.Entities
 		public MDLEntity_SV SV;
 		public MDLEntity_CL CL;
 
-		public static MDLEntity Create( ref List<List<(float[][][], float[], int, Sandbox.Texture, List<float[]>)>> subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
+		public static MDLEntity Create( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
 		{
 			MDLEntity ent = new MDLEntity();
 
@@ -70,7 +70,7 @@ namespace MapParser.GoldSrc.Entities
 			public MDLEntity_SV parent;
 			//private Texture lightmap;
 
-			public MDLEntity_CL( ref List<List<(float[][][], float[], int, Sandbox.Texture, List<float[]>)>> bodyParts, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities ) : base( settings.sceneWorld )
+			public MDLEntity_CL( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] bodyParts, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities ) : base( settings.sceneWorld )
 			{
 				Flags.IsOpaque = true;
 				Flags.IsTranslucent = false;
@@ -138,21 +138,21 @@ namespace MapParser.GoldSrc.Entities
 				bool initializeMinsMaxs = true;
 				ushort meshBatchSize = 612;
 
-				vertexBuffers = new VertexBuffer[bodyParts.Count][][][][];
-				textures = new Sandbox.Texture[bodyParts.Count][];
-				enabledBodyParts = new bool[bodyParts.Count];
-				enabledMeshes = new int[bodyParts.Count][];
-				enabledSubmodels = new bool[bodyParts.Count][];
+				vertexBuffers = new VertexBuffer[bodyParts.Length][][][][];
+				textures = new Sandbox.Texture[bodyParts.Length][];
+				enabledBodyParts = new bool[bodyParts.Length];
+				enabledMeshes = new int[bodyParts.Length][];
+				enabledSubmodels = new bool[bodyParts.Length][];
 
-				for ( var bi = 0; bi < bodyParts.Count; bi++ )
+				for ( var bi = 0; bi < bodyParts.Length; bi++ )
 				{
 					var bodypart = bodyParts[bi];
-					VertexBuffer[][][][] submodelList = new VertexBuffer[bodypart.Count][][][];
-					bool[] enabledSubmodel = new bool[bodypart.Count];
-					int[] enabledMesh = new int[bodypart.Count];
-					var textureBodyPart = new Sandbox.Texture[bodypart.Count];
+					VertexBuffer[][][][] submodelList = new VertexBuffer[bodypart.Length][][][];
+					bool[] enabledSubmodel = new bool[bodypart.Length];
+					int[] enabledMesh = new int[bodypart.Length];
+					var textureBodyPart = new Sandbox.Texture[bodypart.Length];
 
-					for ( var si = 0; si < bodypart.Count; si++ )
+					for ( var si = 0; si < bodypart.Length; si++ )
 					{
 						var submodel = bodypart[si];
 						var uvArray = submodel.Item2;
@@ -455,7 +455,7 @@ namespace MapParser.GoldSrc.Entities
 		public class MDLEntity_SV : ModelEntity //KeyframeEntity
 		{
 			public MDLEntity_SV() { }
-			public MDLEntity_SV( ref List<List<(float[][][], float[], int, Sandbox.Texture, List<float[]>)>> bodyGroups, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings )
+			public MDLEntity_SV( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] bodyGroups, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings )
 			{
 				// We are using first animation frame of models as physics, in the future.
 				// Because complex models will be trouble for server.

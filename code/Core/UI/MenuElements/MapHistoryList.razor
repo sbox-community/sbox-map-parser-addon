@@ -1,0 +1,158 @@
+@using System;
+@using Sandbox;
+@using Sandbox.UI;
+@using Sandbox.Diagnostics;
+@using System.Collections.Generic;
+@using System.Linq;
+@using System.Threading.Tasks;
+
+
+@namespace MapParser
+@inherits Panel
+
+<style>
+	
+	MapHistoryList {
+		width:100%;
+		height: 100%;
+		border-radius: 2px;
+
+		flex-direction: column;
+		flex-wrap: nowrap;
+		//margin:10px;
+		box-shadow: 0px 0px 10px 2px rgba(25, 25, 25, 0.9);
+		flex-shrink: 0;
+
+		.rowHeader{
+			background: linear-gradient(to top, #ffe259, #ffa751);
+			width:100%;
+			height: 5.5%;
+			max-height: 5.5%;
+			min-height: 5.5%;
+			flex-direction:row;
+			flex-shrink: 0;
+			
+			.rowHeader_item{
+				width:100%;
+				height:100%;
+				justify-content:center;
+				border-bottom-width:1px;
+				border-left-width:1px;
+				border-color:black;
+				&:nth-child(1) {
+					border-left-width: 0px;
+				}
+			}
+		}
+		.row{
+			overflow:scroll;
+			background-color: #afafaf;
+			width:100%;
+			height: 100%;
+			flex-direction:column;
+			flex-shrink: 0;
+
+			.rowItem{
+				width:100%;
+				height: 5.5%;
+				max-height:5.5%;
+				min-height: 5.5%;
+				justify-content:center;
+				border-bottom-width:1px;
+				border-color:black;
+				flex-shrink: 0;
+
+				&.True
+				{
+					background: linear-gradient(to bottom, #ff6a6a, #ff1f1f);
+					&:hover{
+						background: none;
+						background-color: #fd4646;
+					}
+				}
+				&.False
+				{
+					background: linear-gradient(to bottom, #898989, #a4a4a4);
+					&:hover{
+						background: none;
+						background-color: gray;
+					}
+				}
+			}
+		}
+}
+</style>
+<div style="flex-direction:row">
+	<div style="flex-direction:column">
+		<div class="rowHeader">
+			<div class="rowHeader_item">Local Spawned Maps (@(MapParser.Manager.mapHistory is not null ? MapParser.Manager.mapHistory?.Count() : 0))</div>
+		</div>
+		<div @ref="rowPanel" class="row">
+			@if (MapParser.Manager.mapHistory is not null && MapParser.Manager.mapHistory?.Count() != 0) {
+				@foreach (var mapHistory in MapParser.Manager.mapHistory.OrderByDescending(x=>x.timeStamp).ToList()) // Need concurrentDictionary
+					{
+					<div timeStamp=@(mapHistory.timeStamp.ToString()) class="rowItem @(selectedData.Equals(mapHistory.timeStamp.ToString()))" @onclick=@((PanelEvent e) => selectRow(e.This))>
+						<div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">
+							@(mapHistory.fromAssetParty ? ($"{mapHistory.mapName} ( {mapHistory.source} )") : ($"{mapHistory.mapName.Replace("maps/", "")} ( {mapHistory.source.Replace(mapHistory.mapName.Replace("maps/", ""), "")} )")) @($"[{DateTimeOffset.FromUnixTimeSeconds(mapHistory.timeStamp).DateTime.ToString("dd/MM/yyyy HH.mm.ss")}]")
+						</div>
+					</div>
+				}
+			}
+			@if (MapParser.Manager.mapHistory is null || MapParser.Manager.mapHistory?.Count() == 0) {
+				<div class="rowItem" style="justify-content:center">No Map History Found</div>
+			}
+		</div>
+	</div>
+	<ScrollBar @ref="scrollBar"></ScrollBar>
+</div>
+
+@code
+{
+	string selectedData = "";
+	public Panel rowPanel { get; set; }
+	ScrollBar scrollBar { get; set; }
+
+	public override void Tick()
+	{
+		base.Tick();
+	}
+	protected override int BuildHash()
+	{
+		return HashCode.Combine(selectedData, MapParser.Manager.mapHistory);
+	}
+	void selectRow(Panel panel) {
+		selectedData = panel.GetAttribute("timeStamp");
+	}
+	public void spawn() {
+
+		if (string.IsNullOrEmpty(selectedData))
+			return;
+
+		foreach (var mapHistory in MapParser.Manager.mapHistory) {
+
+			if (mapHistory.timeStamp.ToString() == selectedData) {
+
+				if (mapHistory.fromAssetParty) {
+					Notify.Create($"Starting to spawn, please wait ( {mapHistory.mapName} )", Notify.NotifyType.Info);
+					Manager.adminConCommandHandler(0, mapHistory.source, mapHistory.mapName, spawnPos: Manager.clientSettings.spawnPos, clearMaps: Manager.clientSettings.clearMaps, wadlist: "", spawnModels: Manager.clientSettings.spawnModels);
+				}
+				else {
+					var mapname = mapHistory.mapName.Replace("maps/", "");
+					var baseurl = mapHistory.source.Replace(mapHistory.mapName.Replace("maps/", ""), "");
+					
+					Notify.Create($"Starting to spawn, please wait ( {mapname} - {baseurl})", Notify.NotifyType.Info);
+					Manager.adminConCommandHandler(3, mapName: mapname, baseUrl: baseurl, wadlist: "", savefolder: "goldsrc", spawnPos: Manager.clientSettings.spawnPos, clearMaps: Manager.clientSettings.clearMaps, spawnModels: Manager.clientSettings.spawnModels);
+				}
+
+				PreparingIndicator.Update("Starting", 10f);
+				break;
+			}
+		}
+	}
+	protected override void OnAfterTreeRender(bool firstTime) {
+		if (firstTime) {
+			MapParser.Manager.mapHistory ??= MapParser.Manager.GetMapHistory();
+			scrollBar.list = this.rowPanel;
+		}
+	}
+}

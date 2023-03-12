@@ -217,38 +217,41 @@ namespace MapParser.GoldSrc
 				texinfoa.Add( new Texinfo { textureMapping = textureMapping, miptex = miptex, flags = flags } );
 			}
 
-			// Parse miptex.
-			var textures = GetLumpData( LumpType.TEXTURES );
-			int nummiptex;
-			using ( var stream = new MemoryStream( textures ) )
-			using ( var reader = new BinaryReader( stream ) )
+			List<string>? textureNames = null;
+			if ( Game.IsClient )
 			{
-				stream.Position = 0x00;
-				nummiptex = reader.ReadInt32();
-			}
-			var textureNames = new List<string>();
-			for ( int i = 0; i < nummiptex; i++ )
-			{
-				int miptexOffs;
+				// Parse miptex.
+				var textures = GetLumpData( LumpType.TEXTURES );
+				int nummiptex;
 				using ( var stream = new MemoryStream( textures ) )
 				using ( var reader = new BinaryReader( stream ) )
 				{
-					stream.Position = 0x04 + i * 0x04;
-					miptexOffs = reader.ReadInt32();
+					stream.Position = 0x00;
+					nummiptex = reader.ReadInt32();
 				}
-				var texName = Util.ReadString( ref textures, miptexOffs + 0x00, 0x10, true );
-				int hasTextureData;
-				using ( var stream = new MemoryStream( textures ) )
-				using ( var reader = new BinaryReader( stream ) )
+				textureNames = new List<string>();
+				for ( int i = 0; i < nummiptex; i++ )
 				{
-					stream.Position = miptexOffs + 0x18;
-					hasTextureData = reader.ReadInt32();
+					int miptexOffs;
+					using ( var stream = new MemoryStream( textures ) )
+					using ( var reader = new BinaryReader( stream ) )
+					{
+						stream.Position = 0x04 + i * 0x04;
+						miptexOffs = reader.ReadInt32();
+					}
+					var texName = Util.ReadString( ref textures, miptexOffs + 0x00, 0x10, true );
+					int hasTextureData;
+					using ( var stream = new MemoryStream( textures ) )
+					using ( var reader = new BinaryReader( stream ) )
+					{
+						stream.Position = miptexOffs + 0x18;
+						hasTextureData = reader.ReadInt32();
+					}
+					if ( hasTextureData != 0 )
+						extraTexData.Add( textures.Skip( miptexOffs ).ToArray() );
+					textureNames.Add( texName );
 				}
-				if ( hasTextureData != 0 )
-					extraTexData.Add( textures.Skip( miptexOffs ).ToArray() );
-				textureNames.Add( texName );
 			}
-
 			// Must be loaded after spawning of map for async
 			if ( Game.IsClient )
 			{
@@ -305,7 +308,7 @@ namespace MapParser.GoldSrc
 					stream.Seek( i * 0x14 + 0x0A, SeekOrigin.Begin );
 					int texinfo = reader.ReadUInt16();
 
-					string texName = textureNames[texinfoa[texinfo].miptex];
+					string texName = textureNames is not null ? textureNames[texinfoa[texinfo].miptex] : "";
 					faces.Add( new Face { index = i, texinfo = texinfo, texName = texName } );
 
 					numVertexData += numedges;

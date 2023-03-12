@@ -132,7 +132,7 @@
 	public string selected { get; set; }
 
 	public static readonly Dictionary<string, List<string>> menuList = new() {
-		{ "GoldSrc", new() { "Texture Cache", "Model Cache", "Other" } },
+		{ "GoldSrc", new() { "Texture Cache", "Model Cache", "History Maps", "Other" } },
 		{ "Source", new() { "WIP" } },
 	};
 
@@ -162,6 +162,9 @@
 		else if (tab == menuList["GoldSrc"][2]) {
 			menuInstance.tab_4_3.Style.Display = DisplayMode.Flex;
 		}
+		else if (tab == menuList["GoldSrc"][3]) {
+			menuInstance.tab_4_4.Style.Display = DisplayMode.Flex;
+		}
 	}
 	void closeAllTabs() {
 
@@ -169,6 +172,7 @@
 		menuInstance.tab_4_1.Style.Display = DisplayMode.None;
 		menuInstance.tab_4_2.Style.Display = DisplayMode.None;
 		menuInstance.tab_4_3.Style.Display = DisplayMode.None;
+		menuInstance.tab_4_4.Style.Display = DisplayMode.None;
 
 	}
 }

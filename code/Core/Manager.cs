@@ -39,6 +39,8 @@ namespace MapParser
 
 		public static ClientSettings clientSettings = new ClientSettings();
 
+		public static List<MapHistory>? mapHistory;
+
 		public struct MapObjects
 		{
 			public GoldSrc.Entities.Map Map { get; set; }
@@ -83,6 +85,15 @@ namespace MapParser
 			public bool clearMaps { get; set; } = true;
 			public bool pixelation { get; set; } = false;
 			public bool spawnModels { get; set; } = false;
+		}
+
+		[Serializable]
+		public class MapHistory
+		{
+			public bool fromAssetParty { get; set; }
+			public string source { get; set; }
+			public string mapName { get; set; }
+			public long timeStamp{ get; set; }
 		}
 
 		[ConCmd.Server( "mapparser_command" )]
@@ -347,8 +358,6 @@ namespace MapParser
 						}
 					}
 				}
-
-			
 
 			// Download .mdl in .res files, also we need look into entity lump in order to get the other .mdls
 			// Should parallel downloading, model spawning is could be done after map spawning like textures
@@ -812,6 +821,9 @@ namespace MapParser
 			mapObject.spawnParameter = settings; // Update
 			Maps.Add( settings.mapName, mapObject );
 
+			if (Game.IsClient)
+				AddMapHistory( settings );
+
 			Notify.Create( "Map Created", Notify.NotifyType.Info );
 
 			return true;
@@ -915,18 +927,17 @@ namespace MapParser
 				Notify.Create( $"Map{(all ? "s" : "")} Removed", Notify.NotifyType.Info );
 		}
 
-		// need assetpartyversion
 		public async static Task<MDLEntity?> spawnModels( GoldSrc.EntityParser.EntityData entData, SpawnParameter settings, List<GoldSrc.EntityParser.EntityData> lightEntities)
 		{
+			if ( ModelRenderer.ModelCache.TryGetValue( entData.data["model"], out var cache ) )
+				return MDLEntity.Create( ref cache.Item1, ref entData, ref settings, ref lightEntities );
+
 			var path = settings.assetparty_version ? $"{entData.data["model"]}.txt" : $"{downloadPath}{settings.saveFolder}{entData.data["model"]}";
 			if ( !settings.fileSystem.FileExists( path ) )
 			{
 				Notify.Create( $"Model not found ({path})" );
 				return null;
 			}
-
-			if ( ModelRenderer.ModelCache.TryGetValue( entData.data["model"], out var cache ))
-				return MDLEntity.Create( ref cache.Item1, ref entData, ref settings, ref lightEntities );
 
 			var data = await GameTask.RunInThreadAsync( async () =>
 			{
@@ -940,11 +951,14 @@ namespace MapParser
 				var meshesRenderData = await ModelRenderer.PrepareRenderData( modelData );
 
 				// Textures preparing (clientside)
-				List<ushort[]> textures = new();
+				ushort[][] textures = null;
 
 				if ( Game.IsClient )
-					foreach ( var tex in modelData.textures )
-						textures.Add( GoldSrc.Entities.TextureBuilder.BuildTexture( ref buffer, tex ) );
+				{
+					textures = new ushort[modelData.textures.Length][];
+					for (var i = 0; i < modelData.textures.Length;i++ )
+						textures[i] = GoldSrc.Entities.TextureBuilder.BuildTexture( ref buffer, modelData.textures[i] );
+				}
 
 				// Generation meshes and modelData
 				return (ModelRenderer.CreateModelEntity( ref meshesRenderData, modelData, ref textures, ref entData, ref settings, ref lightEntities ), modelData);
@@ -953,7 +967,53 @@ namespace MapParser
 			var ent = MDLEntity.Create( ref data.Item1, ref entData, ref settings, ref lightEntities );
 			ModelRenderer.ModelCache.TryAdd( data.Item2.header.name, (data.Item1, data.Item2, entData, lightEntities, null) );
 			return ent;
-	}
+		}
+
+		public static List<MapHistory> GetMapHistory()
+		{
+			var historyPath = $"{downloadPath}";
+			var historyFilePath = $"{historyPath}/goldsrc_history.dat";
+
+			if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( historyPath ) ) )
+				FileSystem.Data.CreateDirectory( Util.PathWithouthFile( historyPath ) );
+
+			List<MapHistory> history = new();
+
+			if ( !FileSystem.Data.FileExists( historyFilePath ) )
+				FileSystem.Data.WriteAllText( historyFilePath, "[]" );
+			else
+				history = JsonSerializer.Deserialize<List<MapHistory>>( FileSystem.Data.ReadAllText( historyFilePath ) );
+
+			return history;
+		}
+
+		public static void AddMapHistory(SpawnParameter settings)
+		{
+			var historyPath = $"{downloadPath}";
+			var historyFilePath = $"{historyPath}/goldsrc_history.dat";
+
+			mapHistory ??= GetMapHistory();
+
+			mapHistory.Add( new MapHistory()
+			{
+				fromAssetParty = settings.assetparty_version,
+				source = settings.assetparty_version ? settings.packageFullIdent : settings.mapUrl,
+				mapName = settings.assetparty_version ? settings.mapName : settings.mapName,
+				timeStamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds()
+		} );
+
+			FileSystem.Data.WriteAllText( historyFilePath, JsonSerializer.Serialize( mapHistory ) );
+		}
+
+		public static void ClearMapHistory()
+		{
+			var historyPath = $"{downloadPath}";
+			var historyFilePath = $"{historyPath}/goldsrc_history.dat";
+			if ( FileSystem.Data.FileExists( historyFilePath ) )
+				FileSystem.Data.DeleteFile( historyFilePath );
+
+			Notify.Create( "Map History Cleared!" );
+		}
 
 		public partial class ContentPackage
 		{

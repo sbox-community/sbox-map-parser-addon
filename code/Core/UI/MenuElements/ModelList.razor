@@ -6,7 +6,6 @@
 @using System.Linq;
 @using System.Threading.Tasks;
 
-
 @namespace MapParser
 @inherits Panel
 
@@ -116,7 +115,7 @@
 	{
 		return HashCode.Combine(selectedData);
 	}
-	void selectRow(string key, (List<List<(float[][][], float[], int, Texture, List<float[]>)>>, GoldSrc.Entities.ModelDataParser.ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data) {
+	void selectRow(string key, ((float[][][], float[], int, Texture, float[][])[][], GoldSrc.Entities.ModelDataParser.ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data) {
 
 		var createdCLEnt = mv.SetModel(ref key, ref data);
 

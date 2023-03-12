@@ -1,13 +1,5 @@
 ﻿// sbox.Community © 2023-2024
 
-using MapParser.GoldSrc.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-//using static MapParser.GoldSrc.MDLParser.ModelRenderer;
-
 namespace MapParser.GoldSrc.Entities
 {
 	public static class ModelController
