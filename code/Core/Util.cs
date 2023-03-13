@@ -361,9 +361,9 @@ namespace MapParser
 		{
 			public static void ConvertToTrianglesRange( ref int[] dstBuffer, int dstOffs, GfxTopology topology, int baseVertex, int numVertices )
 			{
-				if ( dstOffs + GetTriangleIndexCountForTopologyIndexCount( topology, numVertices ) > dstBuffer.Length )
+				if ( dstOffs + GetTriangleIndexCountForTopologyIndexCount( topology, ref numVertices ) > dstBuffer.Length )
 				{
-					Log.Info( (dstOffs + GetTriangleIndexCountForTopologyIndexCount( topology, numVertices ) ) + " " + dstBuffer.Length );
+					Log.Info( (dstOffs + GetTriangleIndexCountForTopologyIndexCount( topology, ref numVertices ) ) + " " + dstBuffer.Length );
 					Notify.Create( "Array too small", Notify.NotifyType.Error );
 					return;
 
@@ -429,7 +429,9 @@ namespace MapParser
 					}
 				}
 			}
-			public static int GetTriangleIndexCountForTopologyIndexCount( GfxTopology topology, int indexCount )
+
+			public static int GetTriangleIndexCountForTopologyIndexCount( GfxTopology topology, ref ushort indexCount ) =>  GetTriangleIndexCountForTopologyIndexCount( topology, ref indexCount );
+			public static int GetTriangleIndexCountForTopologyIndexCount( GfxTopology topology, ref int indexCount )
 			{
 				// Three indexes per triangle.
 				return 3 * GetTriangleCountForTopologyIndexCount( topology, indexCount );

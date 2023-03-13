@@ -638,13 +638,14 @@ namespace MapParser.SourceEngine
 					int baseVertex = vertex.Count();
 					vertex.AddRange( overlayPoints );
 					int dstIndexOffs = indices.Count;
-					indices.Capacity = indices.Capacity + TopologyHelper.GetTriangleIndexCountForTopologyIndexCount( GfxTopology.TriFans, overlayPoints.Length ); // kontrol et
+					var overlayPointsLength = overlayPoints.Length;
+					indices.Capacity = indices.Capacity + TopologyHelper.GetTriangleIndexCountForTopologyIndexCount( GfxTopology.TriFans, ref overlayPointsLength ); // kontrol et
 
 					var indicesArray = new int[indices.Capacity]; // Not the best way
 					for(var i4 = 0;  i4 < indices.Count; i4++)
 						indicesArray[i4] = indices[i4];
 
-					TopologyHelper.ConvertToTrianglesRange( ref indicesArray, dstIndexOffs, GfxTopology.TriFans, baseVertex, overlayPoints.Length );
+					TopologyHelper.ConvertToTrianglesRange( ref indicesArray, dstIndexOffs, GfxTopology.TriFans, baseVertex, overlayPointsLength );
 					indices = indicesArray.ToList();
 					indicesArray = null;
 				}
@@ -1848,7 +1849,7 @@ namespace MapParser.SourceEngine
 					addVertexDataToBuffer( ref vertexBuffer, ref scratchTangentS, ref scratchTangentT, vertex, tex, ref center, tangentW );
 
 					// index buffer
-					indexCount = TopologyHelper.GetTriangleIndexCountForTopologyIndexCount( GfxTopology.TriFans, numedges );
+					indexCount = TopologyHelper.GetTriangleIndexCountForTopologyIndexCount( GfxTopology.TriFans, ref numedges );
 					int[] indexDataTemp = new int[indexCount];//Array.ConvertAll( indexBuffer.AddUint32( indexCount ), Convert.ToInt32 ); // verify
 
 					if ( m_NumPrims != 0 )
