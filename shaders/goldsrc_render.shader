@@ -76,6 +76,7 @@ PS
 
 	float4 MainPs(PS_INPUT i) : SV_Target0
 	{
+
 		float4 t_DiffuseSample;
 		float2 t_TexCoordDiffuse = i.vTextureCoords.xy / TextureDimensions2D(u_TextureDiffuse,0).xy;
 

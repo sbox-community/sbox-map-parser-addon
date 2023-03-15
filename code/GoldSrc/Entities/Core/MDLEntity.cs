@@ -48,7 +48,6 @@ namespace MapParser.GoldSrc.Entities
 				CL.Delete();
 		}
 
-
 		public class MDLEntity_CL : SceneCustomObject
 		{
 			// BodyParts, Submodels, animations and frames respectively. Frames are segmented as list because of the limit of vertexBuffer
@@ -95,7 +94,10 @@ namespace MapParser.GoldSrc.Entities
 				//	frameRate = float.Parse( framerate );
 
 				if ( entData.data.TryGetValue( "renderamt", out var renderamt ) )
-					opacity = int.Parse( renderamt ) / 255f;
+				{
+					var val = int.Parse( renderamt );
+					opacity = val == 0 ? 1 : val / 255f; // idk why some renderamts are 0
+				}
 
 				if ( opacity < 1f )
 					Flags.IsTranslucent = true;

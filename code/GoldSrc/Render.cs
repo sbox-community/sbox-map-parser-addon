@@ -314,10 +314,10 @@ namespace MapParser.GoldSrc
 			var numPixels = lightmapPackerPage.width * lightmapPackerPage.height;
 			byte[] dst = new byte[numPixels * 4];
 			
-			for ( var i = 0; i < lightmap.Count(); i++ )
+			for ( var i = 0; i < lightmap.Count; i++ )
 			{
 				var lightmapData = lightmap[i];
-				if ( lightmapData.samples != null && lightmapData.samples.Count() != 0 )
+				if ( lightmapData.samples != null && lightmapData.samples.Length != 0 )
 				{
 					// TODO(jstpierre): Add up light styles
 					byte[] src = lightmapData.samples;

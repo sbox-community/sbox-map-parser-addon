@@ -14,7 +14,7 @@ namespace MapParser.GoldSrc
 		// in order to find out not exists wad's and use
 		public static Dictionary<string, List<string>> wadIndex = new();
 
-		public List<WADLump> lumps { get; set; }
+		public WADLump[] lumps { get; set; }
 
 		public enum WADLumpType
 		{
@@ -42,7 +42,7 @@ namespace MapParser.GoldSrc
 				var numlumps = BitConverter.ToInt32( buffer, 4 );
 				var infotableofs = BitConverter.ToInt32( buffer, 8 );
 
-				var lumps = new List<WADLump>();
+				var lumps = new WADLump[numlumps];
 				var infotableidx = infotableofs;
 				for ( int i = 0; i < numlumps; i++, infotableidx += 0x20 )
 				{
@@ -72,19 +72,18 @@ namespace MapParser.GoldSrc
 
 					var data = new byte[disksize];
 					Array.Copy( buffer, filepos, data, 0, disksize );
-					lumps.Add( new WADLump
+					lumps[i] = new WADLump
 					{
 						name = name,
 						type = (WADLumpType)type,
 						data = data
-					} );
+					};
 				}
 
 				return new WAD
 				{
 					lumps = lumps
 				};
-
 			}
 		}
 		public static List<string> wadFilesFromTextureName( string textureName )

@@ -580,7 +580,7 @@ namespace MapParser
 
 			List<(List<Vertex>, List<int>, string, int)> mapMeshInfo = new();
 
-			Dictionary<GoldSrc.EntityParser.EntityData, (List<(List<Vertex>, List<int>, string, int)>, Vector3, Vector3, Vector3)> entitiesMeshInfo = new();
+			List< (List<(List<Vertex>, List<int>, string, int)>, Vector3, Vector3, Vector3, GoldSrc.EntityParser.EntityData) > entitiesMeshInfo = new();
 
 			// Map meshes
 			await GameTask.RunInThreadAsync( async () =>
@@ -648,10 +648,10 @@ namespace MapParser
 					}
 					else
 					{
-						if ( entitiesMeshInfo.TryGetValue( meshdata.entity.Value, out var entdata ) )
+						/*if ( entitiesMeshInfo.TryGetValue( meshdata.entity.Value, out var entdata ) )
 							entdata.Item1.Add( (meshdata.vertices, meshdata.indices, meshdata.textureName, meshdata.faceIndex) );
-						else
-							entitiesMeshInfo.Add( meshdata.entity.Value, (new() { (meshdata.vertices, meshdata.indices, meshdata.textureName, meshdata.faceIndex) }, meshdata.nMins, meshdata.nMaxs, meshdata.vOrigin) );
+						else*/
+							entitiesMeshInfo.Add((new() { (meshdata.vertices, meshdata.indices, meshdata.textureName, meshdata.faceIndex) }, meshdata.nMins, meshdata.nMaxs, meshdata.vOrigin, meshdata.entity.Value) );
 					}
 
 					if ( count++ % batchSize == 0 )
@@ -735,33 +735,30 @@ namespace MapParser
 						}
 						else
 						{
-							for ( var j = 0; j < 6; j++ )
+							var decoder = TgaDecoderTest.TgaDecoder.FromBinary( Util.Decompress<byte[]>( Convert.FromBase64String(
+									i == 0 ? GoldSrc.StaticData.skydn :
+									i == 1 ? GoldSrc.StaticData.skyup :
+									i == 2 ? GoldSrc.StaticData.skyrt :
+									i == 3 ? GoldSrc.StaticData.skyft :
+									i == 4 ? GoldSrc.StaticData.skylf :
+									GoldSrc.StaticData.skybk
+							) ) );
+
+							byte[] data = new byte[decoder.Width * decoder.Height * 4];
+							var index = 0;
+							for ( int y = 0; y < decoder.Height; y++ )
 							{
-								var decoder = TgaDecoderTest.TgaDecoder.FromBinary( Util.Decompress<byte[]>( Convert.FromBase64String(
-										j == 0 ? GoldSrc.StaticData.skydn :
-										j == 1 ? GoldSrc.StaticData.skyup :
-										j == 2 ? GoldSrc.StaticData.skyrt :
-										j == 3 ? GoldSrc.StaticData.skyft :
-										j == 4 ? GoldSrc.StaticData.skylf :
-										GoldSrc.StaticData.skybk
-								) ) );
-
-								byte[] data = new byte[decoder.Width * decoder.Height * 4];
-								var index = 0;
-								for ( int y = 0; y < decoder.Height; y++ )
+								for ( int x = 0; x < decoder.Width; x++ )
 								{
-									for ( int x = 0; x < decoder.Width; x++ )
-									{
-										var color = Color.FromRgba( (uint)decoder.GetPixel( x, y ) );
-										data[index++] = (byte)(color.g * 255f);
-										data[index++] = (byte)(color.b * 255f);
-										data[index++] = (byte)(color.a * 255f);
-										data[index++] = (byte)((1 - color.r) * 255f);
-									}
+									var color = Color.FromRgba( (uint)decoder.GetPixel( x, y ) );
+									data[index++] = (byte)(color.g * 255f);
+									data[index++] = (byte)(color.b * 255f);
+									data[index++] = (byte)(color.a * 255f);
+									data[index++] = (byte)((1 - color.r) * 255f);
 								}
-
-								SkyTextures.Add( GoldSrc.TextureCache.addTexture( data, $"{settings.skyName}{suffix}", decoder.Width, decoder.Height ) );
 							}
+
+							SkyTextures.Add( GoldSrc.TextureCache.addTexture( data, $"{settings.skyName}{suffix}", decoder.Width, decoder.Height ) );
 							if ( i == 5 )
 								Notify.Create( $"Sky not found, default sky is loaded! (Sky Name: {(string.IsNullOrEmpty( settings.skyName) ? "Not Found" : settings.skyName)})", Notify.NotifyType.Error );
 						}
@@ -774,7 +771,7 @@ namespace MapParser
 
 				// Create entities on CL for now
 				foreach(var ent in entitiesMeshInfo)
-					mapObject.Map.CL.entities.Add( new GoldSrc.Entities.MapModelEntity( settings, bspData.lightmap, mapObject.Map.CL, ent.Key, ent.Value.Item1, ent.Value.Item2, ent.Value.Item3, ent.Value.Item4 ) );
+					mapObject.Map.CL.entities.Add( new GoldSrc.Entities.MapModelEntity( settings, bspData.lightmap, mapObject.Map.CL, ent.Item5, ent.Item1, ent.Item2, ent.Item3, ent.Item4 ) );
 
 				//mapObject.Map.CL.updateEntityRenderBounds(); // Not a good idea
 				mapObject.Map.CL.findPVSForEntities();
