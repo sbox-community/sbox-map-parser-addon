@@ -190,6 +190,11 @@ namespace MapParser.GoldSrc
 				lastTextureErrors.Clear();
 			}
 		}
+
+		/*public async static Task LoadTexturesFromBSP (Func<Task> act )
+		{
+			await GameTask.RunInThreadAsync( async () => await act() );
+		}*/
 	}
 	public static class MIPTEXData
 	{
@@ -209,28 +214,28 @@ namespace MapParser.GoldSrc
 				const int numLevels = 4;
 
 				var mipOffsets = Enumerable.Range( 0, numLevels )
-				.Select( ( i ) =>
-				{
-					stream.Seek( 0x18 + i * 4, SeekOrigin.Begin );
-					return reader.ReadUInt32();
-				} )
-				.ToArray();
+					.Select( ( i ) =>
+					{
+						stream.Seek( 0x18 + i * 4, SeekOrigin.Begin );
+						return reader.ReadUInt32();
+					} )
+					.ToArray();
 
 				// Find the palette offset.
 				var palOffs = mipOffsets[3] + (Width * Height >> 6);
-				if( palOffs > int.MaxValue )
+				if ( palOffs > int.MaxValue )
 				{
 					// Probably coming from the extra texture data from the bsp is corrupted/non-relative
 					Notify.Create( "Palette offset length is too much", Notify.NotifyType.Error );
 					return (null, 0, 0, 0);
 				}
 
-				if( palOffs > reader.BaseStream.Length || palOffs < 0 ) // Why is happens, idk
+				if ( palOffs > reader.BaseStream.Length || palOffs < 0 ) // Why is happens, idk
 				{
 					Notify.Create( "Palette offset is beyond/before the data length", Notify.NotifyType.Error );
 					return (null, 0, 0, 0);
 				}
-				
+
 				stream.Seek( palOffs + 0x00, SeekOrigin.Begin );
 				var palSize = reader.ReadUInt16();
 				if ( palSize != 0x100 )
@@ -239,15 +244,19 @@ namespace MapParser.GoldSrc
 					return (null, 0, 0, 0);
 				}
 
-				uint[] pal;
-				using ( var memoryStream = new MemoryStream( buffer ) )
-				using ( var binaryReader = new BinaryReader( memoryStream ) )
-				{
-					memoryStream.Seek( palOffs + 0x02, SeekOrigin.Begin );
-					var byteler = binaryReader.ReadBytes( (int)(binaryReader.BaseStream.Length - binaryReader.BaseStream.Position) );
-					pal = byteler.Select( x => (uint)x ).ToArray();
-				}
+				/*uint[] pal;
+				stream.Seek( palOffs + 0x02, SeekOrigin.Begin );
+				var byteler = reader.ReadBytes( (int)(reader.BaseStream.Length - reader.BaseStream.Position) );
+				pal = byteler.Select( x => (uint)x ).ToArray();*/
 
+				int palLength = (int)(reader.BaseStream.Length - reader.BaseStream.Position);
+				uint[] pal = new uint[palLength];
+				byte[] bufferTemp = new byte[palLength];
+				reader.Read( bufferTemp, 0, palLength );
+				for ( int j = 0; j < pal.Length; j++ )
+				{
+					pal[j] = bufferTemp[j];
+				}
 				int mipW = Width, mipH = Height;
 
 				// There are already 1,2 and 3. mips in materialData, but no way to import the mips of created texture. Fortunately, we can use sbox's mips generator.
@@ -258,7 +267,7 @@ namespace MapParser.GoldSrc
 
 				var dataOffs = mipOffsets[i];
 				var numPixels = mipW * mipH;
-				
+
 				for ( int j = 0; j < numPixels; j++ )
 				{
 					stream.Seek( dataOffs++, SeekOrigin.Begin );

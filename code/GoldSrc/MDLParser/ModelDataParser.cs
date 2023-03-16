@@ -442,7 +442,7 @@ namespace MapParser.GoldSrc.Entities
 			return subModels.Select( bodyPart =>
 				bodyPart.Select( subModel =>
 						  //buffer.Skip( subModel.vertIndex )
-						  Enumerable.Range(0, subModel.numVerts * 3).Select( index =>
+						  Enumerable.Range( 0, subModel.numVerts * 3 ).Select( index =>
 						  BitConverter.ToSingle( buffer, subModel.vertIndex + (index * sizeof( float )) ) ) // buffer.Select( ( _, index ) =>
 						  .ToArray()
 				).ToArray()
@@ -529,10 +529,10 @@ namespace MapParser.GoldSrc.Entities
 					{
 						offset = Enumerable.Range( 0, 6 ).Select( r => {
 
-						var _offset = offset + r * sizeof( ushort );
-						return _offset >= buffCount ? (ushort)0 : BitConverter.ToUInt16( buffer, _offset );
-						
-					}
+							var _offset = offset + r * sizeof( ushort );
+							return _offset >= buffCount ? (ushort)0 : BitConverter.ToUInt16( buffer, _offset );
+
+						}
 						).ToArray(),
 					};
 
@@ -616,9 +616,9 @@ namespace MapParser.GoldSrc.Entities
 
 						for ( int v = 0; v < MAX_SRCBONES; v++ )
 						{
-							var offset = animationIndex + animations[i][j].offset[axis + AXLES_NUM] + (v * (sizeof( short ) ));
+							var offset = animationIndex + animations[i][j].offset[axis + AXLES_NUM] + (v * (sizeof( short )));
 
-							var value = offset+2 >= dataCount ? (short)0 : BitConverter.ToInt16( data, offset );
+							var value = offset + 2 >= dataCount ? (short)0 : BitConverter.ToInt16( data, offset );
 							var valid = offset >= dataCount ? (byte)0 : data[offset];
 							var total = offset + sizeof( byte ) >= dataCount ? (byte)0 : data[offset + sizeof( byte )];
 

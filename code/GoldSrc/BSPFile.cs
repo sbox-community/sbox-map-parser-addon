@@ -3,8 +3,10 @@
 using Sandbox;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using static MapParser.Manager;
 
 namespace MapParser.GoldSrc
@@ -124,7 +126,6 @@ namespace MapParser.GoldSrc
 		//public double[] vertexData { get; set; }
 		public List<Surface> surfaces { get; set; } = new();
 		public List<EntityParser.EntityData> entities { get; set; }
-		public List<byte[]> extraTexData = new List<byte[]>();
 		public LightmapPackerPage lightmapPackerPage { get; set; } = new LightmapPackerPage( 2048, 2048 );
 		public Texture lightmap { get; set; }
 		public byte[] buffer { get; set; }
@@ -205,21 +206,39 @@ namespace MapParser.GoldSrc
 			var textures = GetLumpData( LumpType.TEXTURES );
 			int nummiptex = BitConverter.ToInt32( textures, 0x00 );
 			string[] textureNames = new string[nummiptex];
-
-			for ( int i = 0; i < nummiptex; i++ )
+			
+			using ( var reader = new BinaryReader( new MemoryStream( textures ) ) )
 			{
-				int miptexOffs = BitConverter.ToInt32( textures, 0x04 + i * 0x04 );
-				var texName = Util.ReadString( ref textures, miptexOffs + 0x00, 0x10, true );
-
-				if ( Game.IsClient )
+				for ( int i = 0; i < nummiptex; i++ )
 				{
-					int hasTextureData = BitConverter.ToInt32( textures, miptexOffs + 0x18 );
+					reader.BaseStream.Position = 0x04 + i * 0x04;
+					int miptexOffs = reader.ReadInt32();
+					var texName = Util.ReadString( ref textures, miptexOffs + 0x00, 0x10, true );
 
-					if ( hasTextureData != 0 )
-						extraTexData.Add( textures.Skip( miptexOffs ).ToArray() );
+					if ( Game.IsClient )
+					{
+						PreparingIndicator.Update( "Texture" );
+						reader.BaseStream.Position = miptexOffs + 0x18;
+						int hasTextureData = reader.ReadInt32();
+
+						if ( hasTextureData != 0 )
+						{
+							//var mapname = settings.mapName;
+							//_ = TextureCache.LoadTexturesFromBSP (async () => {
+							//	await Task.Yield();
+								// Must be loaded after spawning of map for async
+								// Extra texture data from BSP
+								var extraTexData = new byte[textures.Length - miptexOffs];
+								Array.Copy( textures, miptexOffs, extraTexData, 0, textures.Length - miptexOffs );
+								_ = TextureCache.addTextureWithMIPTEXData( extraTexData, wadname: Util.PathToMapNameWithExtension( settings.mapName ) );
+							//	await Task.Yield();
+
+							//} );
+						}
+					}
+
+					textureNames[i] = texName;
 				}
-
-				textureNames[i] = texName;
 			}
 
 			var texinfoData = GetLumpData( LumpType.TEXINFO );
@@ -244,17 +263,6 @@ namespace MapParser.GoldSrc
 				{
 					int miptex = BitConverter.ToInt32( texinfoData, infoOffs + 0x20 );
 					texinfoa[i] = new Texinfo { miptex = miptex };
-				}
-			}
-
-			if ( Game.IsClient )
-			{
-				// Must be loaded after spawning of map for async
-				// Extra texture data from BSP
-				for ( var i = 0; i < extraTexData.Count(); i++ )
-				{
-					var dataextra = extraTexData[i];
-					_ = TextureCache.addTextureWithMIPTEXData( dataextra, wadname: Util.PathToMapNameWithExtension( settings.mapName ) );
 				}
 			}
 

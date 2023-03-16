@@ -5,7 +5,6 @@ using Sandbox.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using static MapParser.Manager;
 
 namespace MapParser.GoldSrc.Entities
 {
@@ -15,28 +14,26 @@ namespace MapParser.GoldSrc.Entities
 		public MDLEntity_SV SV;
 		public MDLEntity_CL CL;
 
-		public static MDLEntity Create( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] subModels, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities )
+		public static MDLEntity Create( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] subModels, ref GoldSrc.EntityParser.EntityData entData, ref Manager.SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities, MDLEntity? copy = null )
 		{
 			MDLEntity ent = new MDLEntity();
 
 			if ( Game.IsServer )
-				ent.SV = new MDLEntity_SV( ref subModels, ref entData, ref settings );
+				ent.SV = new MDLEntity_SV( ref subModels, ref entData, ref settings, copy );
 			else
-				ent.CL = new MDLEntity_CL( ref subModels, ref entData, ref settings, ref lightEntities );
+				ent.CL = new MDLEntity_CL( ref subModels, ref entData, ref settings, ref lightEntities, copy );
 
 			return ent;
 		}
 
-		// Not good approach, temporary, tie to the serverside entity's constructor
-		public static bool TryLink( MDLEntity_CL self )
+		public static void TryLink( MDLEntity_CL self )
 		{
 			foreach ( var ent in Entity.All.OfType<MDLEntity_SV>() )
-				if ( ent.Position.Distance( self.Position ) < 1e01 )
+				if ( ent.Tags.Has( self.modelID ) ) // I think not good approach, may be sending entity NW ident dictionary from server
 				{
 					self.parent = ent;
 					self.linked = true;
 				}
-			return false;
 		}
 
 		public void Delete()
@@ -54,22 +51,28 @@ namespace MapParser.GoldSrc.Entities
 			[SkipHotload]
 			VertexBuffer[][][][][] vertexBuffers;
 			private static Material renderMat = Material.FromShader( "shaders/goldsrc_model_render.shader" );
-			Sandbox.Texture[][] textures;
+			Texture[][] textures;
 			bool[][] enabledSubmodels; // Contains submodel meshes
 			int[][] enabledMeshes; // Contains submodel mesh map
 			public bool[] enabledBodyParts; // TODO: only one bodypart can be enabled
+			public ushort subModel = 0;
 			public int activeSequence = 0;
 			public float frameRate = 60.0f;  //60fps, added fps from entity but is fps from sequences (or from header) needed?, is it needed bbmax bbmin for physics?
 			double frameState = 0.0f;
 			double timeTaken = 0;
 			float opacity = 1f;
-			Vector4 renderColor = new Vector4( 1f, 1f, 1f, 1f );
+			public Vector4 renderColor = new Vector4( 1f, 1f, 1f, 1f );
 			public bool render = false;
 			public bool linked;
 			public MDLEntity_SV parent;
+			public string modelID;
 			//private Texture lightmap;
 
-			public MDLEntity_CL( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] bodyParts, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities ) : base( settings.sceneWorld )
+			// Temporary for binding
+			ushort enabledBodyPart = 0;
+			ushort enabledSubModel = 0;
+
+			public MDLEntity_CL( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] bodyParts, ref EntityParser.EntityData entData, ref Manager.SpawnParameter settings, ref List<EntityParser.EntityData> lightEntities, MDLEntity? copyFrom = null) : base( settings.sceneWorld )
 			{
 				Flags.IsOpaque = true;
 				Flags.IsTranslucent = false;
@@ -80,6 +83,28 @@ namespace MapParser.GoldSrc.Entities
 				Flags.SkyBoxLayer = false;
 				Flags.NeedsLightProbe = true;
 
+				ApplyEntData( ref entData, ref settings, ref lightEntities );
+
+				if ( copyFrom is not null && copyFrom.CL is not null )
+					CopyFrom( ref copyFrom.CL );
+				else
+					CreateMesh( ref bodyParts );
+
+				modelID = Util.UIDPresentedString( entData.uid );
+
+				Event.Register( this );
+			}
+			~MDLEntity_CL()
+			{
+				Event.Unregister( this );
+			}
+
+			void ApplyEntData( ref EntityParser.EntityData entData, ref Manager.SpawnParameter settings, ref List<EntityParser.EntityData> lightEntities )
+			{
+				/////////////////////////////
+				// Positions and Rotations //
+				/////////////////////////////
+				
 				var origin = Vector3.Parse( entData.data["origin"] );
 				Position = settings.position + origin;
 
@@ -89,9 +114,18 @@ namespace MapParser.GoldSrc.Entities
 				if ( entData.data.TryGetValue( "angles", out var angles ) )
 					Rotation = Rotation.From( Angles.Parse( angles ) );
 
+				/*Transform tf = new();
+										tf.Rotation = Rotation;
+										tf.Position = Position;*/
+				////tf.TransformVector( new Vector3( arr[j * 3], arr[j * 3 + 1], arr[j * 3 + 2] ) );
+				///
 				// Fixed to 60 fps
 				//if ( entData.data.TryGetValue( "framerate", out var framerate ) )
 				//	frameRate = float.Parse( framerate );
+
+				////////////
+				// Render //
+				////////////
 
 				if ( entData.data.TryGetValue( "renderamt", out var renderamt ) )
 				{
@@ -131,9 +165,24 @@ namespace MapParser.GoldSrc.Entities
 				}
 
 				// TODO: Add RenderColor
-
 				//this.lightmap = lightmap;
 
+				////////////
+				// Model //
+				////////////
+
+				// TODO: get which bodypart get used from entData
+				if ( entData.data.TryGetValue( "bodypart", out var bodypart ) ) //custom
+					enabledBodyPart = ushort.Parse( bodypart );
+
+				// TODO: get which submodels get used from entData
+				if ( entData.data.TryGetValue( "submodel", out var submodelVal ) ) //custom
+					enabledSubModel = ushort.Parse( submodelVal );
+
+			}
+
+			void CreateMesh( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] bodyParts )
+			{
 				Vector3 mins = new();
 				Vector3 maxs = new();
 
@@ -230,11 +279,11 @@ namespace MapParser.GoldSrc.Entities
 
 									for ( var j = 0; j < arr.Length / 3; j++ )
 									{
-										Transform tf = new();
+										/*Transform tf = new();
 										tf.Rotation = Rotation;
-										tf.Position = Position;
+										tf.Position = Position;*/
 
-										var vec = tf.TransformVector( new Vector3( arr[j * 3], arr[j * 3 + 1], arr[j * 3 + 2] ) );
+										var vec = new Vector3( arr[j * 3], arr[j * 3 + 1], arr[j * 3 + 2] );//tf.TransformVector( new Vector3( arr[j * 3], arr[j * 3 + 1], arr[j * 3 + 2] ) );
 
 										// Finding mins and maxs
 										if ( initializeMinsMaxs )
@@ -286,23 +335,27 @@ namespace MapParser.GoldSrc.Entities
 					enabledBodyParts[bi] = false;
 				}
 
-				// TODO: get which bodypart get used from entData
-				if( enabledBodyParts.Length > 0)
-				{ 
-					if ( entData.data.TryGetValue( "bodypart", out var bodypart ) && enabledBodyParts.Length > int.Parse(bodypart) ) //custom
-							enabledBodyParts[int.Parse( bodypart )] = true;
-					else
-						enabledBodyParts[0] = true;
-				}
+				if ( enabledBodyParts.Length > 0 )
+					enabledBodyParts[enabledBodyPart] = true;
 
-				// TODO: get which submodels get used from entData
+				ChangeSubmodel( enabledBodyParts.Length > enabledSubModel ? enabledSubModel : 0 );
 
-				if ( entData.data.TryGetValue( "submodel", out var submodelVal ) && enabledBodyParts.Length > int.Parse( submodelVal ) ) //custom
-					ChangeSubmodel( int.Parse( submodelVal ) );
-				else
-					ChangeSubmodel( 0 );
+				Bounds = new BBox( mins + Position, maxs + Position );
+			}
 
-				Bounds = new BBox( mins, maxs );
+			void CopyFrom(ref MDLEntity_CL source)
+			{
+				vertexBuffers = source.vertexBuffers;
+				textures = source.textures;
+				enabledSubmodels = source.enabledSubmodels;
+				enabledMeshes = source.enabledMeshes;
+				enabledBodyParts = source.enabledBodyParts;
+				activeSequence = source.activeSequence;
+				frameRate = source.frameRate;
+				opacity = source.opacity;
+				renderColor = source.renderColor;
+
+				Bounds = new BBox( (source.Bounds.Mins - source.Position) + Position, (source.Bounds.Maxs - source.Position) + Position );
 			}
 
 			int GetActiveBodyPartIndex() {
@@ -319,22 +372,22 @@ namespace MapParser.GoldSrc.Entities
 				var bodyPartIndex = GetActiveBodyPartIndex();
 
 				// submodelIndexWithMeshes, meshCount, submodelIndex
-				List<(int,int,int)> subModelList = new();
+				List<(int, int, int)> subModelList = new();
 
 				var index = 0;
 				var subModelind = 0;
 				for ( var i = 0; i < enabledMeshes[bodyPartIndex].Length; i++ )
 				{
-					if( index == 0 )
+					if ( index == 0 )
 					{
 						index = enabledMeshes[bodyPartIndex][i];
-						subModelList.Add( (i,index, subModelind++) );
+						subModelList.Add( (i, index, subModelind++) );
 					}
 					index--;
 				}
 
-				foreach( var subModel in subModelList )
-					for (var i = subModel.Item1;i < subModel.Item1+subModel.Item2;i++ )
+				foreach ( var subModel in subModelList )
+					for ( var i = subModel.Item1; i < subModel.Item1 + subModel.Item2; i++ )
 						enabledSubmodels[bodyPartIndex][i] = subModel.Item3 == subModelIndex;
 			}
 
@@ -385,6 +438,32 @@ namespace MapParser.GoldSrc.Entities
 				}
 				return mb.AddMeshes( meshList.ToArray() ).Create();
 			}*/
+			void Remove()
+			{
+				Delete();
+				Event.Unregister( this );
+			}
+
+			[Event.Physics.PostStep]
+			public void UpdateEntity()
+			{
+				// Might be identified as will not be linked for only clside entities
+				if ( linked )
+				{
+					if ( !this.IsValid() || !parent.IsValid() )
+						Remove();
+					else
+					{
+						Position = parent.Position;
+						Rotation = parent.Rotation;
+					}
+				}
+				else
+					if( this.IsValid() )
+						TryLink( this );
+					else
+						Remove();
+			}
 
 			public override void RenderSceneObject()
 			{
@@ -394,17 +473,6 @@ namespace MapParser.GoldSrc.Entities
 				if ( Graphics.LayerType != SceneLayerType.Opaque && Graphics.LayerType != SceneLayerType.Translucent )
 					return;
 
-				// Might be identified as will not be linked for only clside entities
-				if ( linked )
-				{
-					if ( !parent.IsValid() )
-						Delete();
-					else
-						Position = parent.Position;
-				}
-				else
-					TryLink( this );
-
 				timeTaken += PerformanceStats.FrameTime * frameRate;
 
 				if ( timeTaken > 1f )
@@ -413,7 +481,9 @@ namespace MapParser.GoldSrc.Entities
 					frameState++;
 				}
 
-				Graphics.Attributes.Set( "Pixelation", clientSettings.pixelation );
+				Graphics.Attributes.Set( "Position", Position );
+				Graphics.Attributes.Set( "Angles", Rotation.Angles() );
+				Graphics.Attributes.Set( "Pixelation", Manager.clientSettings.pixelation );
 				Graphics.Attributes.Set( "Opacity", opacity );
 				//Graphics.Attributes.Set( "TextureLightmap", Texture.Transparent );
 				Graphics.Attributes.Set( "Color", renderColor );
@@ -428,11 +498,12 @@ namespace MapParser.GoldSrc.Entities
 						if ( !enabledSubmodels[i][j] )
 							continue;
 
-						Graphics.Attributes.Set( "TextureDiffuse", (Sandbox.Texture) textures[i][j] ); // TODO: make an issue about it
+						var tex = textures[i][j];
+						Graphics.Attributes.Set( "TextureDiffuse", tex ); // (Sandbox.Texture) TODO: make an issue about it
 
 						if ( vertexBuffers == null ) // remove
 						{
-							Delete();
+							Remove();
 							return;
 						}
 						var animation = vertexBuffers[i][j][activeSequence];
@@ -450,35 +521,38 @@ namespace MapParser.GoldSrc.Entities
 				}
 				base.RenderSceneObject();
 			}
-
-
 		}
 
 		public class MDLEntity_SV : ModelEntity //KeyframeEntity
 		{
-			public MDLEntity_SV() { }
-			public MDLEntity_SV( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] bodyGroups, ref GoldSrc.EntityParser.EntityData entData, ref SpawnParameter settings )
+			public MDLEntity_SV() {}
+			public MDLEntity_SV( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] bodyGroups, ref GoldSrc.EntityParser.EntityData entData, ref Manager.SpawnParameter settings, MDLEntity? copyFrom = null )
 			{
-				// We are using first animation frame of models as physics, in the future.
-				// Because complex models will be trouble for server.
-				// Find out way to get (or parse?) physics mesh or use optimisation method like decimination etc..
 
-				List<Vector3> vectorList = new();
-				ModelBuilder mb = new();
-
-				foreach ( var bodygroup in bodyGroups )
+				if( copyFrom is null )
 				{
-					foreach ( var submodel in bodygroup )
-					{
-						foreach ( var animations in submodel.Item1 )
-						{
-							foreach ( var frames in animations )
-							{
-								var meshArray = frames;
+					// We are using first animation frame of models as physics, in the future.
+					// Because complex models will be trouble for server.
+					// Find out way to get (or parse?) physics mesh or use optimisation method like decimination etc..
 
-								for ( var i = 0; i < meshArray.Length / 3; i++ )
+					List<Vector3> vectorList = new();
+					ModelBuilder mb = new();
+
+					foreach ( var bodygroup in bodyGroups )
+					{
+						foreach ( var submodel in bodygroup )
+						{
+							foreach ( var animations in submodel.Item1 )
+							{
+								foreach ( var frames in animations )
 								{
-									vectorList.Add( new Vector3( meshArray[i * 3], meshArray[i * 3 + 1], meshArray[i * 3 + 2] ) + Position );
+									var meshArray = frames;
+
+									for ( var i = 0; i < meshArray.Length / 3; i++ )
+									{
+										vectorList.Add( new Vector3( meshArray[i * 3], meshArray[i * 3 + 1], meshArray[i * 3 + 2] ) + Position );
+									}
+									break;
 								}
 								break;
 							}
@@ -486,44 +560,52 @@ namespace MapParser.GoldSrc.Entities
 						}
 						break;
 					}
-					break;
+
+					List<int> indexList = new List<int>();
+
+					for ( int i = 2; i < vectorList.Count; i++ )
+					{
+						if ( i % 2 == 0 )
+						{
+							indexList.Add( i );
+							indexList.Add( i - 1 );
+							indexList.Add( i - 2 );
+						}
+						else
+						{
+							indexList.Add( i - 2 );
+							indexList.Add( i - 1 );
+							indexList.Add( i );
+						}
+					}
+
+					// TODO: check entity if is physical entity
+					mb.AddCollisionMesh( vectorList.ToArray(), indexList.ToArray() );
+					//mb.AddCollisionHull( vectorList.ToArray());
+
+					/*List<Vector3> hitboxes = new();
+					foreach ( var hitbox in modelData.hitBoxes )
+					{
+						mb.AddCollisionBox( hitbox.bbmax- hitbox.bbmin, (hitbox.bbmax + hitbox.bbmin)/2f );
+					}*/
+
+					//SetModel( "citizen_props/crate01.vmdl" );
+					Model = mb.Create();
+				}
+				else
+				{
+					Model = copyFrom.SV.Model;
 				}
 
-				List<int> indexList = new List<int>();
-
-				for ( int i = 2; i < vectorList.Count; i++ )
-				{
-					if ( i % 2 == 0 )
-					{
-						indexList.Add( i );
-						indexList.Add( i - 1 );
-						indexList.Add( i - 2 );
-					}
-					else
-					{
-						indexList.Add( i - 2 );
-						indexList.Add( i - 1 );
-						indexList.Add( i );
-					}
-				}
-				mb.AddCollisionMesh( vectorList.ToArray(), indexList.ToArray() );
-
-				/*List<Vector3> hitboxes = new();
-				foreach ( var hitbox in modelData.hitBoxes )
-				{
-					mb.AddCollisionBox( hitbox.bbmax- hitbox.bbmin, (hitbox.bbmax + hitbox.bbmin)/2f );
-				}*/
-
-				Model = mb.Create();
-				SetupPhysicsFromModel( PhysicsMotionType.Static ); //true
+				SetupPhysicsFromModel( PhysicsMotionType.Static );
+				PhysicsEnabled = false;
 				Position = settings.position + Vector3.Parse( entData.data["origin"] );
 				if ( entData.data.TryGetValue( "angle", out var angle ) )
 					Rotation = Rotation.From( new Angles( 0, 0, float.Parse( angle ) ) );
 				if ( entData.data.TryGetValue( "angles", out var angles ) )
 					Rotation = Rotation.From( Angles.Parse( angles ) );
-				PhysicsEnabled = false;
 				EnableDrawing = false;
-				Tags.Add( "solid" );
+				Tags.Add( "solid", Util.UIDPresentedString( entData.uid ) );
 				EnableTraceAndQueries = true;
 				Predictable = false;
 			}

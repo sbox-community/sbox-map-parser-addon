@@ -31,7 +31,6 @@
 	SceneLight lightB;
 	SceneLight lightC;
 	SceneLight lightD;*/
-
 	Vector3 camPos;
 	Angles camAngles;
 	float fieldOfView = 90.0f;
@@ -153,41 +152,47 @@
 		Model.Update(0.1f);
 	}*/
 
-	public MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL SetModel(ref string key, ref ((float[][][], float[], int, Texture, float[][])[][], GoldSrc.Entities.ModelDataParser.ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity) data, int bodypart = 0, bool forceSpawn = false) {
-
+	public MapParser.GoldSrc.Entities.MDLEntity.MDLEntity_CL SetModel(ref string key, ref (GoldSrc.Entities.ModelDataParser.ModelParser, GoldSrc.EntityParser.EntityData, List<GoldSrc.EntityParser.EntityData>, MapParser.GoldSrc.Entities.MDLEntity, MapParser.GoldSrc.Entities.MDLEntity) data, int bodypart = 0)//, bool forceSpawn = false
+	{
 		if (Model != null) {
 			Model.render = false;
 
-			if (forceSpawn) {
+			//if (forceSpawn) {
 				Model.Delete();
 				Model = null;
-			}
+			//}
 		}
 
 		var model = data.Item5;
-		if (model == null) {
+		//if (model == null) {
 			MapParser.Manager.SpawnParameter settings = new();
 			settings.position = Vector3.Zero;
 			settings.sceneWorld = world;
 
-			var entData = data.Item3;
+			var entData = data.Item2;
 			entData.data["origin"] = "0,0,0";
+			entData.data["angles"] = "0,0,0";
 			entData.data["renderamt"] = "255";
 			entData.data["bodypart"] = bodypart.ToString(); // custom
 			entData.data["submodel"] = "0"; // custom
+			entData.uid = -1;
 
 			List<GoldSrc.EntityParser.EntityData> closestLights = new(); //data.Item3; for now, disabled
 
-			model = MapParser.GoldSrc.Entities.MDLEntity.Create(ref data.Item1, ref entData, ref settings, ref closestLights);
+			(float[][][], float[], int, Sandbox.Texture, float[][])[][]? dummy = null;
+
+			model = MapParser.GoldSrc.Entities.MDLEntity.Create(ref dummy, ref entData, ref settings, ref closestLights, data.Item4);
 			data.Item5 = model;
 			MapParser.GoldSrc.Entities.ModelRenderer.ModelCache[key] = data;
 			model.CL.render = true;
+			model.CL.renderColor = Vector4.One;
+
 			Model = model.CL;
-		}
-		else {
+		//}
+		/*else {
 			model.CL.render = true;
 			Model = model.CL;
-		}
+		}*/
 		return Model;
 	}
 

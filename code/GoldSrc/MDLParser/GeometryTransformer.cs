@@ -1,7 +1,6 @@
 ﻿// sbox.Community © 2023-2024
 
 using System;
-using System.Collections.Generic;
 using System.Numerics;
 using static MapParser.GoldSrc.Entities.Constants;
 using static MapParser.GoldSrc.Entities.Structs;
@@ -15,7 +14,7 @@ namespace MapParser.GoldSrc.Entities
 		 * Calculates bone angle
 		 */
 		public static Quaternion CalcBoneQuaternion(
-			ref int frame,
+			int frame,
 			ref Bone bone,
 			ref ushort[] animOffset,
 			ref short[][][][][] animValues,
@@ -234,7 +233,7 @@ namespace MapParser.GoldSrc.Entities
 				var offsets = modelData.animations[sequenceIndex][boneIndex].offset;
 
 				boneQuaternions[boneIndex] = CalcBoneQuaternion(
-					ref frame,
+					frame,
 					ref bones,
 					ref offsets,
 					ref modelData.animValues,

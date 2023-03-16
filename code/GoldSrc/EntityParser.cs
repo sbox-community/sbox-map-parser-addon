@@ -14,12 +14,14 @@ namespace MapParser.GoldSrc
 		{
 			public string classname { get; set; }
 			public Dictionary<string, string> data { get; set; }
+			public int uid { get; set; }
 		}
 
 		public static List<EntityData> parseEntities( byte[] data )
 		{
 			List<EntityData> entDataList = new();
 			var stringData = Encoding.ASCII.GetString( data );
+			int uid = 0;
 
 			//"\\{(?:[^{}]|(R))*\\}"
 			var regex = new Regex( @"\{(?:[^{}]|(?<Depth>\{)|(?<-Depth>\}))*(?(Depth)(?!))\}" ); 
@@ -50,11 +52,12 @@ namespace MapParser.GoldSrc
 
 					if( !string.IsNullOrEmpty(classname))
 					{
+						entData.uid = uid++;
 						entData.classname = classname;
 						entData.data = entAnotherData;
 						entDataList.Add( entData );
 					}
-					
+
 					match = match.NextMatch();
 				}
 			}

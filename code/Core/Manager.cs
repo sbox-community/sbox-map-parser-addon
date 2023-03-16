@@ -580,7 +580,7 @@ namespace MapParser
 
 			List<(List<Vertex>, List<int>, string, int)> mapMeshInfo = new();
 
-			List< (List<(List<Vertex>, List<int>, string, int)>, Vector3, Vector3, Vector3, GoldSrc.EntityParser.EntityData) > entitiesMeshInfo = new();
+			Dictionary<GoldSrc.EntityParser.EntityData,( List<(List<Vertex>, List<int>, string, int)>, Vector3, Vector3, Vector3) > entitiesMeshInfo = new();
 
 			// Map meshes
 			await GameTask.RunInThreadAsync( async () =>
@@ -648,10 +648,10 @@ namespace MapParser
 					}
 					else
 					{
-						/*if ( entitiesMeshInfo.TryGetValue( meshdata.entity.Value, out var entdata ) )
+						if ( entitiesMeshInfo.TryGetValue( meshdata.entity.Value, out var entdata ) )
 							entdata.Item1.Add( (meshdata.vertices, meshdata.indices, meshdata.textureName, meshdata.faceIndex) );
-						else*/
-							entitiesMeshInfo.Add((new() { (meshdata.vertices, meshdata.indices, meshdata.textureName, meshdata.faceIndex) }, meshdata.nMins, meshdata.nMaxs, meshdata.vOrigin, meshdata.entity.Value) );
+						else
+							entitiesMeshInfo.Add(meshdata.entity.Value, ( new() { (meshdata.vertices, meshdata.indices, meshdata.textureName, meshdata.faceIndex) }, meshdata.nMins, meshdata.nMaxs, meshdata.vOrigin) );
 					}
 
 					if ( count++ % batchSize == 0 )
@@ -771,7 +771,7 @@ namespace MapParser
 
 				// Create entities on CL for now
 				foreach(var ent in entitiesMeshInfo)
-					mapObject.Map.CL.entities.Add( new GoldSrc.Entities.MapModelEntity( settings, bspData.lightmap, mapObject.Map.CL, ent.Item5, ent.Item1, ent.Item2, ent.Item3, ent.Item4 ) );
+					mapObject.Map.CL.entities.Add( new GoldSrc.Entities.MapModelEntity( settings, bspData.lightmap, mapObject.Map.CL, ent.Key, ent.Value.Item1, ent.Value.Item2, ent.Value.Item3, ent.Value.Item4 ) );
 
 				//mapObject.Map.CL.updateEntityRenderBounds(); // Not a good idea
 				mapObject.Map.CL.findPVSForEntities();
@@ -926,8 +926,11 @@ namespace MapParser
 
 		public async static Task<MDLEntity?> spawnModels( GoldSrc.EntityParser.EntityData entData, SpawnParameter settings, List<GoldSrc.EntityParser.EntityData> lightEntities)
 		{
-			if ( ModelRenderer.ModelCache.TryGetValue( entData.data["model"], out var cache ) )
-				return MDLEntity.Create( ref cache.Item1, ref entData, ref settings, ref lightEntities );
+			if ( ModelRenderer.ModelCache.TryGetValue( Util.PathToMapNameWithExtension( entData.data["model"] ), out var cache ) )
+			{
+				(float[][][], float[], int, Sandbox.Texture, float[][])[][]? dummy = null;
+				return MDLEntity.Create( ref dummy, ref entData, ref settings, ref lightEntities, cache.Item4 );
+			}
 
 			var path = settings.assetparty_version ? $"{entData.data["model"]}.txt" : $"{downloadPath}{settings.saveFolder}{entData.data["model"]}";
 			if ( !settings.fileSystem.FileExists( path ) )
@@ -962,7 +965,7 @@ namespace MapParser
 			} );
 
 			var ent = MDLEntity.Create( ref data.Item1, ref entData, ref settings, ref lightEntities );
-			ModelRenderer.ModelCache.TryAdd( data.Item2.header.name, (data.Item1, data.Item2, entData, lightEntities, null) );
+			ModelRenderer.ModelCache.TryAdd( Util.PathToMapNameWithExtension( data.Item2.header.name ), (data.Item2, entData, lightEntities, ent, null) );
 			return ent;
 		}
 

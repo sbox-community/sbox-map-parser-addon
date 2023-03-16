@@ -32,7 +32,7 @@ COMMON
 	struct PS_INPUT
 	{
 		float4 vTextureCoords : TEXCOORD0;
-		float3 vPositionWs : TEXCOORD2;
+		//float3 vPositionWs : TEXCOORD2;
 
 #if ( PROGRAM == VFX_PROGRAM_VS )
 		float4 vPositionPs	: SV_Position;
@@ -41,12 +41,29 @@ COMMON
 }
 VS
 {
+	float3 Position < Attribute("Position"); > ;
+	float3 Angles < Attribute("Angles"); > ;
+
+	float3x3 RotationMatrixFromAngles(float3 angles)
+	{
+		float3 c = cos(angles);
+		float3 s = sin(angles);
+		float3x3 rotationMatrix = float3x3(
+			c.y * c.z, c.y * s.z, -s.y,
+			-c.x * s.z + c.z * s.x * s.y, c.x * c.z + s.x * s.y * s.z, c.y * s.x,
+			s.x * s.z + c.x * c.z * s.y, -c.z * s.x + c.x * s.y * s.z, c.x * c.y
+			);
+		return rotationMatrix;
+	}
+
 	PS_INPUT MainVs(const VS_INPUT i)
 	{
 		PS_INPUT o;
 
-		o.vPositionWs = i.vPositionOs.xyz;
-		o.vPositionPs = Position3WsToPs(i.vPositionOs.xyz);
+		float3x3 rotationMatrix = RotationMatrixFromAngles(radians(float3(Angles.z, Angles.x, Angles.y)));
+
+		float3 vPositionWs = mul(i.vPositionOs.xyz,rotationMatrix) + Position;
+		o.vPositionPs = Position3WsToPs(vPositionWs.xyz);
 
 		o.vTextureCoords = i.vTextureCoords;
 

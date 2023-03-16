@@ -229,6 +229,18 @@ namespace MapParser
 			// Return the color
 			return Color.FromBytes( r, g, b, 255 ).Lighten(1);
 		}
+		// Need for using tag system
+		public static string UIDPresentedString( int index )
+		{
+			string result = "";
+			while ( index >= 0 )
+			{
+				result = (char)('a' + index % 26) + result;
+				index /= 26;
+				index--;
+			}
+			return result;
+		}
 		/*public static List<int> SearchBytePattern( byte[] pattern, byte[] bytes, int offset = 0, int maxLimit = 0, bool firstMatchReturn = false )
 		{
 			List<int> positions = new List<int>();

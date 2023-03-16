@@ -116,6 +116,7 @@ namespace MapParser.GoldSrc.Entities
 
 					// The last meshes, they are breaks the mins and maxs, idk why, maybe releated leaf position? for visibility.
 					// We are already manually binding to leaf as inside leaf of this entity. When we use Mins and Maxs from the parameter, it working on properly generally, but for some model entities are not work.
+					// It also causes problem enabling rendering different section of the map?
 					// Verify and review..
 
 					//if ( vertexBufferIndex != meshInfo.Count - 1 ) { 

@@ -68,7 +68,7 @@ namespace MapParser.GoldSrc
 						return new();
 					}
 
-					var name = Encoding.ASCII.GetString( buffer, infotableidx + 16, 16 ).TrimEnd( '\0' );
+					var name = Encoding.ASCII.GetString( buffer, infotableidx + 16, 16 );
 
 					var data = new byte[disksize];
 					Array.Copy( buffer, filepos, data, 0, disksize );

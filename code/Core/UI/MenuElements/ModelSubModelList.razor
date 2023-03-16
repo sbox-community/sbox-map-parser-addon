@@ -87,14 +87,14 @@
 	<div class="rowHeader_item">
 		SubModels @if (selectedModelEntity is not null && !string.IsNullOrEmpty(selectedModel) && MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.TryGetValue(selectedModel, out var data)) {
 
-			@($"({data.Item2.subModels[selectedBodyPart].Count()})")
+			@($"({data.Item1.subModels[selectedBodyPart].Count()})")
 		}
 		</div>
 </div>
 <div class="row">
 	@if (selectedModelEntity is not null && MapParser.GoldSrc.Entities.ModelRenderer.ModelCache.TryGetValue(selectedModel, out var data)) {
-		@for (var i = 0; i < data.Item2.subModels[selectedBodyPart].Count(); i++) {
-			<div val="@(i)" class="rowItem @(selectedModelEntity?.GetSubModels()[i])" @onclick=@((PanelEvent e) => selectRow(e.This))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(data.Item2.subModels[selectedBodyPart][i].name)</div></div>
+		@for (var i = 0; i < data.Item1.subModels[selectedBodyPart].Count(); i++) {
+			<div val="@(i)" class="rowItem @(selectedModelEntity?.GetSubModels()[i])" @onclick=@((PanelEvent e) => selectRow(e.This))><div style="width:70%;max-width:70%;min-width:70%;justify-content:center;">@(data.Item1.subModels[selectedBodyPart][i].name)</div></div>
 		}
 	}
 	@if (selectedModelEntity is null) {
