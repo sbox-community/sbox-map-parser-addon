@@ -296,18 +296,27 @@ namespace MapParser
 			if ( !FileSystem.Data.FileExists( $"{mapPath.Replace( ".bsp", ".res" )}" ) )
 			{
 				var http = new Http( new Uri( $"{settings.mapUrl.Replace( ".bsp", ".res" )}" ) );
-				var data = await http.GetStringAsync();
+				string data = "";
+				try
+				{
+					data = await http.GetStringAsync();
 
-				if ( !data.Contains( "<!DOCTYPE" ) )
-				{
-					var notify = DownloadNotification.CreateInfo( "", 5f );
-					notify?.FinishDownload( $"Download successful ( {settings.mapUrl.Replace( ".bsp", ".res" )} )" );
-					FileSystem.Data.WriteAllText( $"{mapPath.Replace( ".bsp", ".res" )}", data );
+					if ( !data.Contains( "<!DOCTYPE" ) )
+					{
+						var notify = DownloadNotification.CreateInfo( "", 5f );
+						notify?.FinishDownload( $"Download successful ( {settings.mapUrl.Replace( ".bsp", ".res" )} )" );
+						FileSystem.Data.WriteAllText( $"{mapPath.Replace( ".bsp", ".res" )}", data );
+					}
+					else
+					{
+						var notify = DownloadNotification.CreateInfo( "", 5f );
+						notify?.FailedDownload( $"Download failed ( {settings.mapUrl.Replace( ".bsp", ".res" )} )" );
+					}
 				}
-				else
+				catch
 				{
-					var notify = DownloadNotification.CreateInfo( "", 5f );
-					notify?.FailedDownload( $"Download failed ( {settings.mapUrl.Replace( ".bsp", ".res" )} )" );
+					Notify.Create( "Res file not found in url!", Notify.NotifyType.Warning ); // Generally giving 404
+					http.Dispose();
 				}
 
 				http.Dispose();
