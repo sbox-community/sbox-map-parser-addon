@@ -9,14 +9,16 @@ using System.Linq;
 namespace MapParser.GoldSrc.Entities
 {
 	// Static model entity
-	public class MDLEntity
+	public partial class MDLEntity : IGoldSrcEntity
 	{
 		public MDLEntity_SV SV;
 		public MDLEntity_CL CL;
+		public EntityParser.EntityData entData { get; set; }
 
 		public static MDLEntity Create( ref (float[][][], float[], int, Sandbox.Texture, float[][])[][] subModels, ref GoldSrc.EntityParser.EntityData entData, ref Manager.SpawnParameter settings, ref List<GoldSrc.EntityParser.EntityData> lightEntities, MDLEntity? copy = null )
 		{
 			MDLEntity ent = new MDLEntity();
+			ent.entData = entData;
 
 			if ( Game.IsServer )
 				ent.SV = new MDLEntity_SV( ref subModels, ref entData, ref settings, copy );

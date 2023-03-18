@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using MapParser.SourceEngine;
 using static MapParser.SourceEngine.Main;
 using MapParser.GoldSrc.Entities;
+using System.IO;
 
 namespace MapParser
 {
@@ -43,7 +44,8 @@ namespace MapParser
 
 		public struct MapObjects
 		{
-			public GoldSrc.Entities.Map Map { get; set; }
+			public Map Map { get; set; }
+			public List<IGoldSrcEntity> Entities { get; set; }
 			//public PhysicsBody body { get; set; }
 			public SpawnParameter spawnParameter { get; set; }
 			public List<string> textureErrors { get; set; }
@@ -74,6 +76,7 @@ namespace MapParser
 			public List<string> wadUrls { get; set; } // GoldSrc, todo: change
 			public List<string> skyUrls { get; set; } // GoldSrc, todo: change
 			public List<string> mdlUrls { get; set; } // GoldSrc, todo: change
+			public List<string> wavUrls { get; set; } // GoldSrc, todo: change
 			public string saveFolder { get; set; }
 			public IClient owner { get; set; }
 		}
@@ -289,8 +292,11 @@ namespace MapParser
 			settings.mapPath = mapPath;
 			settings.mdlUrls = new(); // don't initialize here
 
-			if(Game.IsClient)
+			if ( Game.IsClient )
+			{
 				settings.skyUrls = new(); // don't initialize here
+				settings.wavUrls = new(); // don't initialize here
+			}
 
 			// Check if .res file is exists, in order to get the list of wads of the map and also sky files
 			if ( !FileSystem.Data.FileExists( $"{mapPath.Replace( ".bsp", ".res" )}" ) )
@@ -327,6 +333,10 @@ namespace MapParser
 						settings.mdlUrls.Add( line );
 
 					if ( Game.IsClient )
+						if ( line.Contains( ".wav" ) )
+							settings.wavUrls.Add( line );
+
+					if ( Game.IsClient )
 					{ 
 						if ( line.Contains( ".wad" ) )
 						settings.wadUrls.Add( $"{settings.baseUrl}{Util.PathToMapName( line )}" );
@@ -350,6 +360,10 @@ namespace MapParser
 				{
 					if ( line.Contains( ".mdl" ) )
 						settings.mdlUrls.Add( line );
+
+					if ( Game.IsClient )
+						if ( line.Contains( ".wav" ) )
+							settings.wavUrls.Add( line );
 
 					if ( Game.IsClient )
 					{
@@ -414,6 +428,52 @@ namespace MapParser
 
 			if ( Game.IsClient )
 			{
+				// Download .wav in .res files
+				for ( var i = 0; i < settings.wavUrls.Count(); i++ )
+				{
+					var wavUrl = Util.RemoveInvalidChars( settings.wavUrls[i] );
+					var wavName = Util.PathToMapName( wavUrl );
+
+					if ( string.IsNullOrEmpty( wavName ) )
+						continue;
+
+					var wavPath = $"{downloadPath}{settings.saveFolder}{wavUrl}";
+					if ( !FileSystem.Data.FileExists( wavPath ) )
+					{
+						var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {wavUrl} )" );
+						var http = new Http( new Uri( $"{settings.baseUrl.Replace("maps/","")}{wavUrl}" ) );
+
+						try
+						{
+							var data = await http.GetBytesAsync();
+
+							if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+							{
+								notify?.FinishDownload( $"Download successful ( {wavUrl} )" );
+
+								if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( wavPath ) ) )
+									FileSystem.Data.CreateDirectory( Util.PathWithouthFile( wavPath ) );
+
+								var file = FileSystem.Data.OpenWrite( wavPath, FileMode.Create );
+								file.Write( data );
+								file.Close();
+
+							}
+							else
+							{
+								notify?.FailedDownload();
+								Notify.Create( $"{wavName}.wav not found in url {wavUrl}", Notify.NotifyType.Error );
+							}
+						}
+						catch
+						{
+							Notify.Create( $"{wavPath}.wav not found in url {wavPath}", Notify.NotifyType.Error );
+						}
+
+						http.Dispose();
+					}
+				}
+
 				// Download wads in .res files
 				for ( var i = 0; i < settings.wadUrls.Count(); i++ )
 				{
@@ -568,6 +628,7 @@ namespace MapParser
 
 			MapObjects mapObject = new MapObjects();
 			mapObject.Map = new();
+			mapObject.Entities = new();
 			mapObject.spawnParameter = settings;
 
 			settings.sceneWorld = Game.SceneWorld;
@@ -813,6 +874,8 @@ namespace MapParser
 								mapObject.Map.SV.models.Add( createdModel );
 							else
 								mapObject.Map.CL.models.Add( createdModel );
+
+							mapObject.Entities.Add( createdModel );
 						}
 						await Task.Yield();
 					}
@@ -821,6 +884,23 @@ namespace MapParser
 						mapObject.Map.CL.findPVSForModelEntities();
 				}
 			}
+
+			// Create KeyValue Entities
+			{
+				if ( Game.IsServer ) {}
+				
+				if ( Game.IsClient )
+				{
+					PreparingIndicator.Update( "Entities" );
+
+					var ambientGeneric = bspData.entities.Where( x => x.classname == "ambient_generic" ); //&& x.data.TryGetValue( "message", out var message ) && message.EndsWith( ".wav" ) 
+
+					foreach ( var ent in ambientGeneric )
+						mapObject.Entities.Add( ambient_Generic.Create( ent, settings ) );
+				}
+			}
+
+
 			if ( Game.IsClient )
 				mapObject.Map.CL.RegisterEvent(); // Register tick event
 
@@ -897,6 +977,9 @@ namespace MapParser
 							model.Delete();
 
 				map.Map.Delete();
+
+				foreach ( var ent in map.Entities )
+					ent.Delete();
 
 				foreach ( var ent in Game.SceneWorld.SceneObjects )
 					if ( ent != null && ent.IsValid() && ent.Flags.IsOpaque && !ent.Flags.NeedsLightProbe )
@@ -1210,6 +1293,34 @@ namespace MapParser
 
 		}*/
 
+		/*static MapParser.GoldSrc.Entities.Sounds.ambient_generic? testent;
+		[ConCmd.Client( "soundtest3" )]
+		public static void soundtest()
+		{
+			MapParser.Manager.SpawnParameter settings = new();
+			settings.position = Vector3.Zero;
+			settings.sceneWorld = Game.SceneWorld;
+			settings.fileSystem = FileSystem.Data;
+
+			GoldSrc.EntityParser.EntityData entData = new();
+			entData.data = new();
+			entData.data["origin"] = "0,0,0";
+			entData.data["spawnflags"] = "1";
+			entData.data["message"] = "test.wav";
+
+			if ( testent is not null )
+			{
+				testent.Delete();
+				testent = null;
+
+			}
+
+
+			testent = new(ref entData,ref settings);
+			//testent.StartSound();
+		}*/
+		
+
 		static Sandbox.ModelEntity ent;
 		static SourceFileSystem? filesystem;
 
@@ -1245,8 +1356,42 @@ namespace MapParser
 		[ConCmd.Client( "test11" )]
 		public static void testsource1()
 		{
+			var filesystem = new SourceFileSystem( FileSystem.Data );
+			_ = filesystem.CreateVPKMount( "hl2_misc" );
+			var loadContext = new SourceLoadContext( filesystem );
+
+			/*    const filesystem = loadContext.filesystem;
+
+    // Clear out old filesystem pakfile.
+    filesystem.pakfiles.length = 0;*/
+
+			var renderContext = new SourceRenderContext(loadContext);//context.device,
+			var renderer = new SourceRenderer(renderContext); //context, 
+
+
 			var buffer = FileSystem.Data.ReadAllBytes( "d1_canals_01.bsp" ).ToArray();
-			var bspData = new SourceEngine.BSPFile( buffer,"test" );
+			var bspFile = new SourceEngine.BSPFile( buffer,"test" );
+
+
+			/*    if (bspFile.pakfile !== null)
+	        filesystem.addPakFile(bspFile.pakfile);
+
+		if (bspFile.cubemaps[0] !== undefined)
+			await renderContext.materialCache.bindLocalCubemap(bspFile.cubemaps[0]);*/
+
+
+			 var bspRenderer = new BSPRenderer(renderContext, bspFile);
+
+
+			/*
+    // Build skybox from worldname.
+    const worldspawn = bspRenderer.getWorldSpawn();
+    if (worldspawn.skyname)
+        renderer.skyboxRenderer = new SkyboxRenderer(renderContext, worldspawn.skyname);
+    */
+
+			renderer.bspRenderers.Add( bspRenderer );
+
 
 			var model = Model.Builder;
 			List<Mesh> meshes = new List<Mesh>();
@@ -1255,7 +1400,7 @@ namespace MapParser
 
 			var mat = Material.Load( "materials/dev/gray_grid_4.vmat" );
 
-			foreach ( var meshdata in bspData.meshDataList )
+			foreach ( var meshdata in bspFile.meshDataList )
 			{
 
 				/*if ( Game.IsServer )
@@ -1277,9 +1422,9 @@ namespace MapParser
 				*/
 
 
-				//Log.Info( meshdata.textureName );
+			//Log.Info( meshdata.textureName );
 
-				var mesh = new Mesh( mat );
+			var mesh = new Mesh( mat );
 				mesh.CreateVertexBuffer( meshdata.vertices.Count(), Vertex.Layout, meshdata.vertices.ToList() );
 				mesh.CreateIndexBuffer( meshdata.indices.Count(), meshdata.indices.ToArray() );
 				model.AddCollisionMesh( meshdata.vertices.Select( x => x.Position ).ToArray(), meshdata.indices.ToArray() );

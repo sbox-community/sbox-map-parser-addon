@@ -1950,15 +1950,16 @@ namespace MapParser.SourceEngine
 
 	public class StaticResources
 	{
-		/*public GfxTexture whiteTexture2D;
-		public GfxTexture opaqueBlackTexture2D;
-		public GfxTexture transparentBlackTexture2D;
-		public GfxSampler linearClampSampler;
-		public GfxSampler linearRepeatSampler;
-		public GfxSampler pointClampSampler;
-		public GfxSampler shadowSampler;
-		public StaticQuad staticQuad;
-		public GfxBuffer zeroVertexBuffer;*/
+			/*public GfxTexture whiteTexture2D;
+			public GfxTexture opaqueBlackTexture2D;
+			public GfxTexture transparentBlackTexture2D;
+			public GfxSampler linearClampSampler;
+			public GfxSampler linearRepeatSampler;
+			public GfxSampler pointClampSampler;
+			public GfxSampler shadowSampler;
+			public StaticQuad staticQuad;
+			public GfxBuffer zeroVertexBuffer;*/
+			public Texture texture; //test
 
 		public StaticResources() //GfxDevice device, GfxRenderCache cache
 			{
@@ -2981,6 +2982,143 @@ namespace MapParser.SourceEngine
 				param.value = 1.0f;
 			}
 		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		public class LightmapPage
+		{
+		public Texture gfxTexture;
+		public bool uploadDirty = false;
+		public readonly LightmapPackerPage page;
+		public readonly byte[] data;
+
+		public LightmapPage( LightmapPackerPage page ) // GfxDevice device,
+			{
+			this.page = page;
+			int width = this.page.Width, height = this.page.Height, numSlices = 4;
+
+			// RGBM seems to be good enough for all devices
+			//PixelFormat pixelFormat = PixelFormat.R8_G8_B8_A8_UNorm;
+			this.data = new byte[width * height * numSlices * 4];
+
+			/*GfxTextureDescription desc = new GfxTextureDescription()
+			{
+				Type = TextureType.Texture2DArray,
+				Usage = TextureUsage.Sampled,
+				Format = pixelFormat,
+				Width = (uint)page.width,
+				Height = (uint)page.height,
+				Depth = (uint)numSlices,
+				MipLevels = 1,
+			};
+			this.gfxTexture = device.ResourceFactory.CreateTexture( ref desc );
+			*/
+
+			bool fillEmptySpaceWithPink = false;
+			if ( fillEmptySpaceWithPink )
+			{
+				for ( int i = 0; i < width * height * numSlices * 4; i += 4 )
+				{
+					this.data[i + 0] = 0xFF;
+					this.data[i + 1] = 0x00;
+					this.data[i + 2] = 0xFF;
+					this.data[i + 3] = 0xFF;
+				}
+			}
+		}
+
+		/*public void PrepareToRender( GfxDevice device )
+		{
+			byte[] data = this.data;
+
+			if ( this.uploadDirty )
+			{
+				// TODO(jstpierre): Sub-data resource uploads? :/
+				device.UpdateTexture( this.gfxTexture, data );
+				this.uploadDirty = false;
+			}
+		}
+
+		public void Destroy( GfxDevice device )
+		{
+			device.DisposeTexture( this.gfxTexture );
+		}*/
+	}
+
+
+
+	public class LightmapManager
+		{
+			private List<LightmapPage> lightmapPages = new List<LightmapPage>();
+			//public GfxSampler gfxSampler;
+			public float[] scratchpad = new float[4 * 128 * 128 * 3];
+			public int pageWidth = 2048;
+			public int pageHeight = 2048;
+
+			public LightmapManager() //GfxDevice device, GfxRenderCache cache 
+			{
+				/*gfxSampler = cache.CreateSampler( new GfxSamplerDescriptor
+				{
+					MinFilter = GfxTexFilterMode.Bilinear,
+					MagFilter = GfxTexFilterMode.Bilinear,
+					MipFilter = GfxMipFilterMode.NoMip,
+					WrapS = GfxWrapMode.Clamp,
+					WrapT = GfxWrapMode.Clamp
+				} );*/
+			}
+
+			public void FillTextureMapping( TextureMapping m, int? lightmapPageIndex )
+			{
+				if ( lightmapPageIndex == null )
+					return;
+
+				//m.gfxTexture = GetPageTexture( lightmapPageIndex.Value );
+				//m.gfxSampler = gfxSampler;
+			}
+
+			public int AppendPackerPages( LightmapPacker manager )
+			{
+				int startPage = lightmapPages.Count;
+				for ( int i = 0; i < manager.pages.Count; i++ )
+					lightmapPages.Add( new LightmapPage( manager.pages[i] ) ); // device,
+				return startPage;
+			}
+
+			/*public void PrepareToRender( GfxDevice device )
+			{
+				for ( int i = 0; i < lightmapPages.Count; i++ )
+					lightmapPages[i].PrepareToRender( device );
+			}*/
+
+			public LightmapPage GetPage( int pageIndex )
+			{
+				return lightmapPages[pageIndex];
+			}
+
+			public Texture GetPageTexture( int pageIndex )
+			{
+				return lightmapPages[pageIndex].gfxTexture;
+			}
+
+			/*public void Destroy( GfxDevice device )
+			{
+				for ( int i = 0; i < lightmapPages.Count; i++ )
+					lightmapPages[i].Destroy( device );
+			}*/
+		}
+
+
 
 
 

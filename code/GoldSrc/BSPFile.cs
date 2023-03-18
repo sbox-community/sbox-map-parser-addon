@@ -221,7 +221,7 @@ namespace MapParser.GoldSrc
 						reader.BaseStream.Position = miptexOffs + 0x18;
 						int hasTextureData = reader.ReadInt32();
 
-						if ( hasTextureData != 0 )
+						if ( hasTextureData != 0 && miptexOffs != -1 ) // verify: miptexOffs != -1 (fy_cbble)
 						{
 							//var mapname = settings.mapName;
 							//_ = TextureCache.LoadTexturesFromBSP (async () => {
