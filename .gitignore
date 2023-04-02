@@ -5,3 +5,8 @@
 /code/Properties/
 /code/obj/
 *.csproj
+/code/obj/Debug/map_parser.assets.cache
+/code/obj/map_parser.csproj.nuget.dgspec.json
+/code/obj/project.assets.json
+/code/obj/project.nuget.cache
+/code/map_parser.csproj
