@@ -30,10 +30,16 @@
 		transition: all 0.1s ease-in-out, opacity 0.2s linear;
 		transform: scale(0);
 
+		i {
+			font-family: "material icons";
+			text-align: center;
+		}
+
 		&.Open{
 			transition: all 0.25s ease-in-out;
 			transform: scale(1);
 		}
+
 		&.Close{
 			transition: all 0.4s ease-in-out;
 			transform: scale(0) rotateZ(100%);
@@ -246,8 +252,6 @@
 							margin:10px;
 						}
 					}
-
-					
 				}
 			}
 		}
@@ -293,7 +297,7 @@
 			<div class="infolist" style="justify-content:center;align-items:center;text-align:center;">
 				@if(activePackage == null)
 				{
-					<span class="noinfo" style="font-size:30px;text-shadow:0 0 1px rgba(50,50,50,0.1);">Welcome To Map Parser</span>
+					<span class="noinfo" style="font-size:30px;text-shadow:0 0 1px rgba(50,50,50,0.1);">@welcomeText</span>
 				}
 				@if(activePackage != null)
 				{
@@ -461,6 +465,7 @@
 	Dictionary <string,List<Manager.ContentPackage.PackageInfo>> mapsOfActivePackage = new();
 
 	public bool toggleMenu = true;
+	public bool disableToggleMenu = false;
 	public Panel header { get; set; }
 	public Panel body { get; set; }
 	public MapList maplist { get; set; }
@@ -490,6 +495,7 @@
 	public Panel tab_6 { get; set; }
 	public string selectedWAD = "None";
 	public WebPanel webpanel { get; set; }
+	public string welcomeText = "Welcome To Map Parser";
 
 	List<Manager.ContentPackage.PackageInfo>? updateMaplist = null;
 	float turn = 0;
@@ -761,6 +767,9 @@
 
 	void toggleMenuHandler()
 	{
+		if ( disableToggleMenu )
+			return;
+
 		toggleMenu = !toggleMenu;
 
 		if(toggleMenu)

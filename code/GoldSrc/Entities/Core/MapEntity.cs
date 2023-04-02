@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Sandbox;
 using static MapParser.Manager;
-
 namespace MapParser.GoldSrc.Entities
 {
 	public partial class Map
@@ -70,6 +69,8 @@ namespace MapParser.GoldSrc.Entities
 			private bool insideMapChanged = false;
 			public bool removed = false;
 			public bool hasModelEntity = false;
+			public bool customCamera = false;
+			public BBox customBBox = default;
 
 			//int entityMeshCount = 0; // debug purposes
 			//int currentEntityMeshCount = 0; // debug purposes
@@ -134,6 +135,9 @@ namespace MapParser.GoldSrc.Entities
 				var vertexBufferIndex = 0;
 				Dictionary<int, string> texturesNeedLoaded = new();
 
+				Vector3 min = default;
+				Vector3 max = default;
+
 				foreach ( var mesh in meshInfo )
 				{
 					PreparingIndicator.Update( "Map" );
@@ -148,6 +152,12 @@ namespace MapParser.GoldSrc.Entities
 					{
 						buffer.Add( new( vertex.Position + settings.position, vertex.Normal, vertex.Tangent, vertex.TexCoord0 ) );
 						Normal = vertex.Normal;
+
+						if ( settings.AABB == null )
+						{
+							min = Vector3.Min( min, vertex.Position + settings.position );
+							max = Vector3.Max( max, vertex.Position + settings.position );
+						}
 					}
 
 					foreach ( var indices in mesh.Item2 )
@@ -165,7 +175,8 @@ namespace MapParser.GoldSrc.Entities
 
 				vertexBufferCount = vertexBuffer.Count;
 
-				AABB = settings.AABB;
+				AABB = settings.AABB == null ? new BBox( min, max ).Corners.ToList() : settings.AABB;
+				customCamera = settings.customCamera;
 
 				for ( var i = 0; i < AABB.Count; i++ )
 				{
@@ -266,7 +277,7 @@ namespace MapParser.GoldSrc.Entities
 
 			public void updateTexture( int key, Texture newTex )
 			{
-				PreparingIndicator.Update("Texture");
+				PreparingIndicator.Update( "Texture" );
 
 				for ( var i = 0; i < vertexBuffer.Count; i++ )
 				{
@@ -322,7 +333,7 @@ namespace MapParser.GoldSrc.Entities
 				if ( insideMapChanged != insideMap )
 				{
 					insideMapChanged = insideMap;
-					foreach ( var ent in Game.SceneWorld.SceneObjects )
+					foreach ( var ent in World.SceneObjects )
 						if ( ent != null && ent.IsValid() && ent.Flags.IsOpaque && !ent.Flags.NeedsLightProbe )
 							ent.RenderingEnabled = !insideMap;
 
@@ -333,7 +344,7 @@ namespace MapParser.GoldSrc.Entities
 				//FrustumUpdate();
 
 				// Render map if we are inside it
-				var bbox = Game.LocalClient.Pawn.WorldSpaceBounds;
+				var bbox = customCamera ? customBBox : Game.LocalClient.Pawn.WorldSpaceBounds;
 
 				if ( !bbox.Overlaps( Bounds ) )
 				{
@@ -400,7 +411,8 @@ namespace MapParser.GoldSrc.Entities
 										entities[entpvsid].render = true;
 									}
 
-									if( hasModelEntity ) { 
+									if ( hasModelEntity )
+									{
 										foreach ( var modelpvsid in modelsPVS[ix] )
 										{
 											//if( !entities[entpvsid].render )
@@ -483,7 +495,6 @@ namespace MapParser.GoldSrc.Entities
 					sky_vb.AddRawIndex( 0 );
 
 					Graphics.Attributes.Set( "g_vSkyTexture", skyTextures[i] );
-
 					sky_vb.Draw( skyMat );
 				}
 
@@ -508,7 +519,6 @@ namespace MapParser.GoldSrc.Entities
 					var leaf = leaves[i];
 					DebugOverlay.Box( leaf.BBox.Mins, leaf.BBox.Maxs );
 				}*/
-
 			}
 
 			/*protected static Vector2 Planar( Vector3 pos, Vector3 uAxis, Vector3 vAxis )
@@ -533,13 +543,15 @@ namespace MapParser.GoldSrc.Entities
 				}
 				binormal = Vector3.Cross( normal, tangent ).Normal;
 			}*/
+
 		}
 
 		public partial class Map_SV : ModelEntity
 		{
 			public List<MDLEntity> models = new List<MDLEntity>();
 			public Map_SV() { }
-			public Map_SV( ref SpawnParameter settings, ref ModelBuilder model ) {
+			public Map_SV( ref SpawnParameter settings, ref ModelBuilder model )
+			{
 
 				Model = model.Create();
 				SetupPhysicsFromModel( PhysicsMotionType.Static );

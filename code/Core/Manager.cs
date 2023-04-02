@@ -1,4 +1,4 @@
-// sbox.Community � 2023-2024
+﻿// sbox.Community © 2023-2024
 
 using Sandbox;
 using Sandbox.UI;
@@ -70,6 +70,7 @@ namespace MapParser
 			public List<Vector3>? spawnPoints { get; set; }
 			public SceneWorld sceneWorld { get; set; }
 			public bool spawnModels { get; set; }
+			public bool customCamera { get; set; }
 
 			public string baseUrl { get; set; }
 			public string mapUrl { get; set; }
@@ -96,19 +97,19 @@ namespace MapParser
 			public bool fromAssetParty { get; set; }
 			public string source { get; set; }
 			public string mapName { get; set; }
-			public long timeStamp{ get; set; }
+			public long timeStamp { get; set; }
 		}
 
-		[ConCmd.Server( "mapparser_command" )]
+		[ConCmd.Admin( "mapparser_command" )]
 		public static void adminConCommandHandler( uint flag, string fullIdent = "", string mapName = "", int spawnPos = 0, string baseUrl = "", string wadlist = "", string savefolder = "unknown_engine", bool clearMaps = true, bool spawnModels = false )
 		{
 			var caller = ConsoleSystem.Caller;
 
-			if ( !caller.IsListenServerHost && ConsoleSystem.GetValue( "sv_cheats", "0" ) == "0" )
+			/*if ( !caller.IsListenServerHost && ConsoleSystem.GetValue( "sv_cheats", "0" ) == "0" ) // IsListenServerHost is broken, engine convars cannot be accessed..
 			{
 				Notify.CreateCL( To.Single( caller ), "sv_cheats must be 1", Notify.NotifyType.Error );
 				return;
-			}
+			}*/
 
 			if ( flag == 0 || flag == 3 )
 			{
@@ -133,7 +134,8 @@ namespace MapParser
 					wadList = new(),
 					owner = caller,
 					clients = To.Everyone,
-					spawnModels = spawnModels
+					spawnModels = spawnModels,
+					customCamera = false,
 				};
 
 				Notify.tryRemoveNotificationPanel();
@@ -187,7 +189,7 @@ namespace MapParser
 		[ConCmd.Client( "mapparser_menu" )]
 		public static void clientConCommandHandler_Menu()
 		{
-			if ( mainMenu != null && mainMenu.IsValid())
+			if ( mainMenu != null && mainMenu.IsValid() )
 				(mainMenu as Menu).CloseMenu();
 
 			mainMenu = Game.RootPanel.AddChild<Menu>();
@@ -240,10 +242,10 @@ namespace MapParser
 							if ( string.IsNullOrEmpty( settings.skyPath ) )
 								settings.skyPath = $"{Util.PathWithouthFile( line )}\\";
 					}
-						
+
 				settings.wadList = settings.wadList.Distinct().ToList();
 			}
-			
+
 			_ = await spawnMap( settings );
 		}
 
@@ -337,9 +339,9 @@ namespace MapParser
 							settings.wavUrls.Add( line );
 
 					if ( Game.IsClient )
-					{ 
+					{
 						if ( line.Contains( ".wad" ) )
-						settings.wadUrls.Add( $"{settings.baseUrl}{Util.PathToMapName( line )}" );
+							settings.wadUrls.Add( $"{settings.baseUrl}{Util.PathToMapName( line )}" );
 
 						if ( line.Contains( ".tga" ) )
 						{
@@ -441,7 +443,7 @@ namespace MapParser
 					if ( !FileSystem.Data.FileExists( wavPath ) )
 					{
 						var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {wavUrl} )" );
-						var http = new Http( new Uri( $"{settings.baseUrl.Replace("maps/","")}{wavUrl}" ) );
+						var http = new Http( new Uri( $"{settings.baseUrl.Replace( "maps/", "" )}{wavUrl}" ) );
 
 						try
 						{
@@ -556,7 +558,7 @@ namespace MapParser
 					}
 				}
 
-				if( settings.skyUrls.Count != 0 )
+				if ( settings.skyUrls.Count != 0 )
 				{
 					// Download sky tga in .res files
 					foreach ( var skyurl in settings.skyUrls )
@@ -566,13 +568,14 @@ namespace MapParser
 						if ( string.IsNullOrEmpty( skyName ) )
 							continue;
 
-						var skyPath = $"{downloadPath}{settings.saveFolder}{skyurl.Replace( settings.baseUrl, "")}";
+						var skyPath = $"{downloadPath}{settings.saveFolder}{skyurl.Replace( settings.baseUrl, "" )}";
 						if ( !FileSystem.Data.FileExists( skyPath ) )
 						{
 							var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {skyurl} )" );
 							var http = new Http( new Uri( $"{skyurl}" ) );
 
-							try {
+							try
+							{
 								var data = await http.GetBytesAsync();
 
 								if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( skyPath ) ) )
@@ -608,7 +611,7 @@ namespace MapParser
 
 		public async static Task<bool> spawnMap( SpawnParameter settings )
 		{
-			PreparingIndicator.Update("Spawning");
+			PreparingIndicator.Update( "Spawning" );
 
 			if ( settings.removeOthers )
 			{
@@ -631,7 +634,8 @@ namespace MapParser
 			mapObject.Entities = new();
 			mapObject.spawnParameter = settings;
 
-			settings.sceneWorld = Game.SceneWorld;
+			if( settings.sceneWorld == null )
+				settings.sceneWorld = Game.SceneWorld;
 
 			//mapObject.body = new PhysicsBody( Game.PhysicsWorld );
 
@@ -650,7 +654,7 @@ namespace MapParser
 
 			List<(List<Vertex>, List<int>, string, int)> mapMeshInfo = new();
 
-			Dictionary<GoldSrc.EntityParser.EntityData,( List<(List<Vertex>, List<int>, string, int)>, Vector3, Vector3, Vector3) > entitiesMeshInfo = new();
+			Dictionary<GoldSrc.EntityParser.EntityData, (List<(List<Vertex>, List<int>, string, int)>, Vector3, Vector3, Vector3)> entitiesMeshInfo = new();
 
 			// Map meshes
 			await GameTask.RunInThreadAsync( async () =>
@@ -678,7 +682,7 @@ namespace MapParser
 					else
 						mapMeshInfo.Add( (meshdata.vertices, meshdata.indices, meshdata.textureName, meshdata.faceIndex) );
 
-					if( count++ % batchSize == 0)
+					if ( count++ % batchSize == 0 )
 						await Task.Yield();
 				}
 
@@ -721,7 +725,7 @@ namespace MapParser
 						if ( entitiesMeshInfo.TryGetValue( meshdata.entity.Value, out var entdata ) )
 							entdata.Item1.Add( (meshdata.vertices, meshdata.indices, meshdata.textureName, meshdata.faceIndex) );
 						else
-							entitiesMeshInfo.Add(meshdata.entity.Value, ( new() { (meshdata.vertices, meshdata.indices, meshdata.textureName, meshdata.faceIndex) }, meshdata.nMins, meshdata.nMaxs, meshdata.vOrigin) );
+							entitiesMeshInfo.Add( meshdata.entity.Value, (new() { (meshdata.vertices, meshdata.indices, meshdata.textureName, meshdata.faceIndex) }, meshdata.nMins, meshdata.nMaxs, meshdata.vOrigin) );
 					}
 
 					if ( count++ % batchSize == 0 )
@@ -752,7 +756,7 @@ namespace MapParser
 				}
 			}
 			if ( settings.spawnPoints is not null )
-				findTeleportPoint = settings.spawnPoints[Game.Random.Int( 0, settings.spawnPoints.Count - 1)]; // + meshdata.vOrigin, is it needed?
+				findTeleportPoint = settings.spawnPoints[Game.Random.Int( 0, settings.spawnPoints.Count - 1 )]; // + meshdata.vOrigin, is it needed?
 
 			if ( Game.IsClient )
 			{
@@ -830,22 +834,22 @@ namespace MapParser
 
 							SkyTextures.Add( GoldSrc.TextureCache.addTexture( data, $"{settings.skyName}{suffix}", decoder.Width, decoder.Height ) );
 							if ( i == 5 )
-								Notify.Create( $"Sky not found, default sky is loaded! (Sky Name: {(string.IsNullOrEmpty( settings.skyName) ? "Not Found" : settings.skyName)})", Notify.NotifyType.Error );
+								Notify.Create( $"Sky not found, default sky is loaded! (Sky Name: {(string.IsNullOrEmpty( settings.skyName ) ? "Not Found" : settings.skyName)})", Notify.NotifyType.Error );
 						}
 						if ( i % 2 == 0 )
 							await Task.Yield();
 					}
 				} );
 
-				mapObject.Map = GoldSrc.Entities.Map.Create( ref settings, ref bspData, ref SkyTextures, ref mapMeshInfo, ref mb);
+				mapObject.Map = GoldSrc.Entities.Map.Create( ref settings, ref bspData, ref SkyTextures, ref mapMeshInfo, ref mb );
 
 				// Create entities on CL for now
-				foreach(var ent in entitiesMeshInfo)
+				foreach ( var ent in entitiesMeshInfo )
 					mapObject.Map.CL.entities.Add( new GoldSrc.Entities.MapModelEntity( settings, bspData.lightmap, mapObject.Map.CL, ent.Key, ent.Value.Item1, ent.Value.Item2, ent.Value.Item3, ent.Value.Item4 ) );
 
 				//mapObject.Map.CL.updateEntityRenderBounds(); // Not a good idea
 				mapObject.Map.CL.findPVSForEntities();
-				
+
 			}
 			else
 			{
@@ -855,13 +859,13 @@ namespace MapParser
 				if ( findTeleportPoint != null )
 					settings.owner.Pawn.Position = findTeleportPoint.Value + settings.position;
 
-				spawnMap_cl( To.Everyone, settings.mapName, settings.position, settings.angles, mapObject.Map.SV.WorldSpaceBounds.Center, mapObject.Map.SV.WorldSpaceBounds.Corners.ToArray(), settings.removeOthers,settings.spawnModels, settings.packageFullIdent, assetparty_version: settings.assetparty_version, wadlist: string.Join( ",", settings.wadList ),skyName: bspData.skyname, baseurl: !settings.assetparty_version ? settings.baseUrl : "", savefolder: !settings.assetparty_version ? settings.saveFolder : "" );
+				spawnMap_cl( To.Everyone, settings.mapName, settings.position, settings.angles, mapObject.Map.SV.WorldSpaceBounds.Center, mapObject.Map.SV.WorldSpaceBounds.Corners.ToArray(), settings.removeOthers, settings.spawnModels, settings.packageFullIdent, assetparty_version: settings.assetparty_version, wadlist: string.Join( ",", settings.wadList ), skyName: bspData.skyname, baseurl: !settings.assetparty_version ? settings.baseUrl : "", savefolder: !settings.assetparty_version ? settings.saveFolder : "" );
 			}
 
 			// Create Models
-			if( settings.spawnModels )
-			{ 
-				var modelEntities = bspData.entities.Where( x => x.data.TryGetValue("model", out var model) && model.EndsWith(".mdl") );
+			if ( settings.spawnModels )
+			{
+				var modelEntities = bspData.entities.Where( x => x.data.TryGetValue( "model", out var model ) && model.EndsWith( ".mdl" ) );
 				var lightEntities = bspData.entities.Where( x => x.classname == "light_environment" || x.classname == "light" ).ToList(); // is "light" important?
 				if ( modelEntities.Any() )
 				{
@@ -887,8 +891,8 @@ namespace MapParser
 
 			// Create KeyValue Entities
 			{
-				if ( Game.IsServer ) {}
-				
+				if ( Game.IsServer ) { }
+
 				if ( Game.IsClient )
 				{
 					PreparingIndicator.Update( "Entities" );
@@ -907,7 +911,7 @@ namespace MapParser
 			mapObject.spawnParameter = settings; // Update
 			Maps.Add( settings.mapName, mapObject );
 
-			if (Game.IsClient)
+			if ( Game.IsClient )
 				AddMapHistory( settings );
 
 			Notify.Create( "Map Created", Notify.NotifyType.Info );
@@ -916,7 +920,7 @@ namespace MapParser
 		}
 
 		[ClientRpc]
-		public static void spawnMap_cl( string mapName, Vector3 position, Angles angles, Vector3 center, Vector3[] AABB, bool removeOthers, bool spawnModels = false, string packageFullIdent = "", bool assetparty_version = true, string baseurl = "", string savefolder = "", string wadlist = "", string skyName = "")
+		public static void spawnMap_cl( string mapName, Vector3 position, Angles angles, Vector3 center, Vector3[] AABB, bool removeOthers, bool spawnModels = false, string packageFullIdent = "", bool assetparty_version = true, string baseurl = "", string savefolder = "", string wadlist = "", string skyName = "" )
 		{
 			var settings = new SpawnParameter()
 			{
@@ -963,10 +967,10 @@ namespace MapParser
 			{
 				if ( map.Map.SV != null && map.Map.SV.IsValid() && map.Map.SV.models.Count > 0 )
 					foreach ( var model in map.Map.SV.models )
-						if( model != null )
+						if ( model != null )
 							model.Delete();
 
-				if ( map.Map.CL != null && map.Map.CL.IsValid() && map.Map.CL.entities.Count > 0)
+				if ( map.Map.CL != null && map.Map.CL.IsValid() && map.Map.CL.entities.Count > 0 )
 					foreach ( var ent in map.Map.CL.entities )
 						if ( ent != null )
 							ent.Delete();
@@ -1016,7 +1020,7 @@ namespace MapParser
 				Notify.Create( $"Map{(all ? "s" : "")} Removed", Notify.NotifyType.Info );
 		}
 
-		public async static Task<MDLEntity?> spawnModels( GoldSrc.EntityParser.EntityData entData, SpawnParameter settings, List<GoldSrc.EntityParser.EntityData> lightEntities)
+		public async static Task<MDLEntity?> spawnModels( GoldSrc.EntityParser.EntityData entData, SpawnParameter settings, List<GoldSrc.EntityParser.EntityData> lightEntities )
 		{
 			if ( ModelRenderer.ModelCache.TryGetValue( Util.PathToMapNameWithExtension( entData.data["model"] ), out var cache ) )
 			{
@@ -1048,7 +1052,7 @@ namespace MapParser
 				if ( Game.IsClient )
 				{
 					textures = new ushort[modelData.textures.Length][];
-					for (var i = 0; i < modelData.textures.Length;i++ )
+					for ( var i = 0; i < modelData.textures.Length; i++ )
 						textures[i] = GoldSrc.Entities.TextureBuilder.BuildTexture( ref buffer, modelData.textures[i] );
 				}
 
@@ -1079,7 +1083,7 @@ namespace MapParser
 			return history;
 		}
 
-		public static void AddMapHistory(SpawnParameter settings)
+		public static void AddMapHistory( SpawnParameter settings )
 		{
 			var historyPath = $"{downloadPath}";
 			var historyFilePath = $"{historyPath}/goldsrc_history.dat";
@@ -1092,7 +1096,7 @@ namespace MapParser
 				source = settings.assetparty_version ? settings.packageFullIdent : settings.mapUrl,
 				mapName = settings.assetparty_version ? settings.mapName : settings.mapName,
 				timeStamp = ((DateTimeOffset)DateTime.Now).ToUnixTimeSeconds()
-		} );
+			} );
 
 			FileSystem.Data.WriteAllText( historyFilePath, JsonSerializer.Serialize( mapHistory ) );
 		}
@@ -1256,7 +1260,7 @@ namespace MapParser
 		}
 		void IHotloadManaged.Created( IReadOnlyDictionary<string, object> state )
 		{
-		
+
 		}
 
 
@@ -1319,7 +1323,7 @@ namespace MapParser
 			testent = new(ref entData,ref settings);
 			//testent.StartSound();
 		}*/
-		
+
 
 		static Sandbox.ModelEntity ent;
 		static SourceFileSystem? filesystem;
@@ -1327,20 +1331,20 @@ namespace MapParser
 		[ConCmd.Client( "vpk" )]
 		public static void vpk()
 		{
-			if ( filesystem is null)
+			if ( filesystem is null )
 			{
-				filesystem = new SourceFileSystem(FileSystem.Data);
+				filesystem = new SourceFileSystem( FileSystem.Data );
 				filesystem.CreateVPKMount( "hl2_misc" );
 			}
 
-			if( filesystem  is not null)
+			if ( filesystem is not null )
 			{
 				var asd = VmtParser.ParseVMT( filesystem, "materials/props/combine_display01a.vmt" ).Result; //"materials /metal/metalbar001a.vmt" 
 
-				foreach (var vpk in filesystem.vpk)
+				foreach ( var vpk in filesystem.vpk )
 				{
 					var dosya = vpk.FindEntry( "materials/props/combine_display01a.vmt" );
-					if( dosya.Path != null)
+					if ( dosya.Path != null )
 					{
 						var veri = filesystem.FetchFileData( "materials/props/combine_display01a.vmt" ).Result;
 						//if ( veri != null )
@@ -1365,12 +1369,12 @@ namespace MapParser
     // Clear out old filesystem pakfile.
     filesystem.pakfiles.length = 0;*/
 
-			var renderContext = new SourceRenderContext(loadContext);//context.device,
-			var renderer = new SourceRenderer(renderContext); //context, 
+			var renderContext = new SourceRenderContext( loadContext );//context.device,
+			var renderer = new SourceRenderer( renderContext ); //context, 
 
 
 			var buffer = FileSystem.Data.ReadAllBytes( "d1_canals_01.bsp" ).ToArray();
-			var bspFile = new SourceEngine.BSPFile( buffer,"test" );
+			var bspFile = new SourceEngine.BSPFile( buffer, "test" );
 
 
 			/*    if (bspFile.pakfile !== null)
@@ -1380,7 +1384,7 @@ namespace MapParser
 			await renderContext.materialCache.bindLocalCubemap(bspFile.cubemaps[0]);*/
 
 
-			 var bspRenderer = new BSPRenderer(renderContext, bspFile);
+			var bspRenderer = new BSPRenderer( renderContext, bspFile );
 
 
 			/*
@@ -1422,9 +1426,9 @@ namespace MapParser
 				*/
 
 
-			//Log.Info( meshdata.textureName );
+				//Log.Info( meshdata.textureName );
 
-			var mesh = new Mesh( mat );
+				var mesh = new Mesh( mat );
 				mesh.CreateVertexBuffer( meshdata.vertices.Count(), Vertex.Layout, meshdata.vertices.ToList() );
 				mesh.CreateIndexBuffer( meshdata.indices.Count(), meshdata.indices.ToArray() );
 				model.AddCollisionMesh( meshdata.vertices.Select( x => x.Position ).ToArray(), meshdata.indices.ToArray() );
@@ -1438,13 +1442,13 @@ namespace MapParser
 
 			if ( ent != null )
 				ent.Delete();
-						ent = new();
-						ent.Model = model.Create();//Model.Load( "models/arrow.vmdl" );//model.Create();
-												   ent.SetupPhysicsFromModel( PhysicsMotionType.Static );
-						ent.Position = new Vector3(0,0,500f);
-							//ent.Rotation = Rotation.From( settings.angles );
-							ent.PhysicsEnabled = false;
-						
+			ent = new();
+			ent.Model = model.Create();//Model.Load( "models/arrow.vmdl" );//model.Create();
+			ent.SetupPhysicsFromModel( PhysicsMotionType.Static );
+			ent.Position = new Vector3( 0, 0, 500f );
+			//ent.Rotation = Rotation.From( settings.angles );
+			ent.PhysicsEnabled = false;
+
 
 			/*model.AddMeshes( meshes.ToArray() );
 			var so = new SceneObject( Game.SceneWorld, model.Create(), new Transform( Vector3.Zero ) );*/
