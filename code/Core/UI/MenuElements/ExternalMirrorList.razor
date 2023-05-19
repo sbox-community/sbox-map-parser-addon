@@ -158,21 +158,22 @@
 				if (file.Contains(sanitizedMirror))
 					FileSystem.Data.DeleteFile($"{Manager.downloadPath}{file}");
 
-			var http = new Http(new Uri($"{selectedMirror}maps/"));
-			var data = await http.GetBytesAsync();
-			var ascii = Encoding.ASCII.GetString(data);
+			using (var http = Sandbox.Http.RequestBytesAsync($"{selectedMirror}maps/"))
+			{
+				var data = await http;
+				var ascii = Encoding.ASCII.GetString(data);
 
-			string pattern = @"href=['""]([^'""]+?)['""]";
+				string pattern = @"href=['""]([^'""]+?)['""]";
 
-			var matches = Regex.Matches(ascii, pattern);
+				var matches = Regex.Matches(ascii, pattern);
 
-			foreach (Match match in matches)
-				if (match.Groups[1].Value.Contains(".bsp"))
-					finalData.Add(match.Groups[1].Value.Replace("href=\"","").Replace(".bsp\"",""));
+				foreach (Match match in matches)
+					if (match.Groups[1].Value.Contains(".bsp"))
+						finalData.Add(match.Groups[1].Value.Replace("href=\"","").Replace(".bsp\"",""));
 
-			FileSystem.Data.WriteAllText($"{path}", string.Join(";", Convert.ToBase64String(Util.Compress(string.Join(";", finalData)))));
+				FileSystem.Data.WriteAllText($"{path}", string.Join(";", Convert.ToBase64String(Util.Compress(string.Join(";", finalData)))));
 
-			http.Dispose();
+			}
 		}
 
 		mirrorData.Item3 = finalData;

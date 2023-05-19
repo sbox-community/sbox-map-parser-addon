@@ -15,6 +15,7 @@ using MapParser.SourceEngine;
 using static MapParser.SourceEngine.Main;
 using MapParser.GoldSrc.Entities;
 using System.IO;
+using static System.Net.WebRequestMethods;
 
 namespace MapParser
 {
@@ -100,7 +101,7 @@ namespace MapParser
 			public long timeStamp { get; set; }
 		}
 
-		[ConCmd.Admin( "mapparser_command" )]
+		[ConCmd.Server( "mapparser_command" )]
 		public static void adminConCommandHandler( uint flag, string fullIdent = "", string mapName = "", int spawnPos = 0, string baseUrl = "", string wadlist = "", string savefolder = "unknown_engine", bool clearMaps = true, bool spawnModels = false )
 		{
 			var caller = ConsoleSystem.Caller;
@@ -263,32 +264,30 @@ namespace MapParser
 			if ( !FileSystem.Data.FileExists( mapPath ) )
 			{
 				var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {settings.mapUrl} )" );
-				var http = new Http( new Uri( $"{settings.mapUrl}" ) );
-
-				try
+				using ( var http = Sandbox.Http.RequestBytesAsync( $"{settings.mapUrl}" ) )
 				{
-					var data = await http.GetBytesAsync();
+					try
+					{
+						var data = await http;
 
-					if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
-					{
-						FileSystem.Data.WriteAllText( $"{mapPath}", Convert.ToBase64String( data ) );
-						notify?.FinishDownload();
+						if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+						{
+							FileSystem.Data.WriteAllText( $"{mapPath}", Convert.ToBase64String( data ) );
+							notify?.FinishDownload();
+						}
+						else
+						{
+							notify?.FailedDownload();
+							Notify.Create( "Map not found in url!", Notify.NotifyType.Error );
+							return;
+						}
 					}
-					else
+					catch
 					{
-						notify?.FailedDownload();
-						Notify.Create( "Map not found in url!", Notify.NotifyType.Error );
-						http.Dispose();
+						Notify.Create( "Map not found in url!", Notify.NotifyType.Error ); // Generally giving 404
 						return;
 					}
 				}
-				catch
-				{
-					Notify.Create( "Map not found in url!", Notify.NotifyType.Error ); // Generally giving 404
-					http.Dispose();
-					return;
-				}
-				http.Dispose();
 			}
 
 			settings.mapPath = mapPath;
@@ -303,56 +302,55 @@ namespace MapParser
 			// Check if .res file is exists, in order to get the list of wads of the map and also sky files
 			if ( !FileSystem.Data.FileExists( $"{mapPath.Replace( ".bsp", ".res" )}" ) )
 			{
-				var http = new Http( new Uri( $"{settings.mapUrl.Replace( ".bsp", ".res" )}" ) );
-				string data = "";
-				try
+				using ( var http = Sandbox.Http.RequestStringAsync( $"{settings.mapUrl.Replace( ".bsp", ".res" )}" ) )
 				{
-					data = await http.GetStringAsync();
-
-					if ( !data.Contains( "<!DOCTYPE" ) )
+					string data = "";
+					try
 					{
-						var notify = DownloadNotification.CreateInfo( "", 5f );
-						notify?.FinishDownload( $"Download successful ( {settings.mapUrl.Replace( ".bsp", ".res" )} )" );
-						FileSystem.Data.WriteAllText( $"{mapPath.Replace( ".bsp", ".res" )}", data );
-					}
-					else
-					{
-						var notify = DownloadNotification.CreateInfo( "", 5f );
-						notify?.FailedDownload( $"Download failed ( {settings.mapUrl.Replace( ".bsp", ".res" )} )" );
-					}
-				}
-				catch
-				{
-					Notify.Create( "Res file not found in url!", Notify.NotifyType.Warning ); // Generally giving 404
-					http.Dispose();
-				}
+						data = await http;
 
-				http.Dispose();
-
-				foreach ( string line in data.Split( '\n' ) )
-				{
-					if ( line.Contains( ".mdl" ) )
-						settings.mdlUrls.Add( line );
-
-					if ( Game.IsClient )
-						if ( line.Contains( ".wav" ) )
-							settings.wavUrls.Add( line );
-
-					if ( Game.IsClient )
-					{
-						if ( line.Contains( ".wad" ) )
-							settings.wadUrls.Add( $"{settings.baseUrl}{Util.PathToMapName( line )}" );
-
-						if ( line.Contains( ".tga" ) )
+						if ( !data.Contains( "<!DOCTYPE" ) )
 						{
-							// If skyname is not found in .bsp, we trying to find from the .res file
-							var sanitized = Util.RemoveInvalidChars( line );
-							var filename = Util.PathToMapName( sanitized );
+							var notify = DownloadNotification.CreateInfo( "", 5f );
+							notify?.FinishDownload( $"Download successful ( {settings.mapUrl.Replace( ".bsp", ".res" )} )" );
+							FileSystem.Data.WriteAllText( $"{mapPath.Replace( ".bsp", ".res" )}", data );
+						}
+						else
+						{
+							var notify = DownloadNotification.CreateInfo( "", 5f );
+							notify?.FailedDownload( $"Download failed ( {settings.mapUrl.Replace( ".bsp", ".res" )} )" );
+						}
+					}
+					catch
+					{
+						Notify.Create( "Res file not found in url!", Notify.NotifyType.Warning ); // Generally giving 404
+					}
 
-							if ( string.IsNullOrEmpty( settings.skyName ) || string.IsNullOrWhiteSpace( settings.skyName ) )
-								settings.skyName = filename.Substring( 0, filename.Length - 2 );
+					foreach ( string line in data.Split( '\n' ) )
+					{
+						if ( line.Contains( ".mdl" ) )
+							settings.mdlUrls.Add( line );
 
-							settings.skyUrls.Add( $"{settings.baseUrl}{sanitized}" );
+						if ( Game.IsClient )
+							if ( line.Contains( ".wav" ) )
+								settings.wavUrls.Add( line );
+
+						if ( Game.IsClient )
+						{
+							if ( line.Contains( ".wad" ) )
+								settings.wadUrls.Add( $"{settings.baseUrl}{Util.PathToMapName( line )}" );
+
+							if ( line.Contains( ".tga" ) )
+							{
+								// If skyname is not found in .bsp, we trying to find from the .res file
+								var sanitized = Util.RemoveInvalidChars( line );
+								var filename = Util.PathToMapName( sanitized );
+
+								if ( string.IsNullOrEmpty( settings.skyName ) || string.IsNullOrWhiteSpace( settings.skyName ) )
+									settings.skyName = filename.Substring( 0, filename.Length - 2 );
+
+								settings.skyUrls.Add( $"{settings.baseUrl}{sanitized}" );
+							}
 						}
 					}
 				}
@@ -398,33 +396,33 @@ namespace MapParser
 				if ( !FileSystem.Data.FileExists( mdlPath ) )
 				{
 					var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {mdlUrl} )" );
-					var http = new Http( new Uri( $"{settings.baseUrl}{mdlUrl}" ) );
 
-					try
-					{
-						var data = await http.GetBytesAsync();
-
-						if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+					using ( var http = Sandbox.Http.RequestBytesAsync( $"{settings.baseUrl}{mdlUrl}" ) )
+					{ 
+						try
 						{
-							notify?.FinishDownload( $"Download successful ( {mdlUrl} )" );
+							var data = await http;
 
-							if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( mdlPath ) ) )
-								FileSystem.Data.CreateDirectory( Util.PathWithouthFile( mdlPath ) );
+							if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+							{
+								notify?.FinishDownload( $"Download successful ( {mdlUrl} )" );
 
-							FileSystem.Data.WriteAllText( mdlPath, Convert.ToBase64String( data ) );
+								if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( mdlPath ) ) )
+									FileSystem.Data.CreateDirectory( Util.PathWithouthFile( mdlPath ) );
+
+								FileSystem.Data.WriteAllText( mdlPath, Convert.ToBase64String( data ) );
+							}
+							else
+							{
+								notify?.FailedDownload();
+								Notify.Create( $"{mdlName}.mdl not found in url {mdlUrl}", Notify.NotifyType.Error );
+							}
 						}
-						else
+						catch
 						{
-							notify?.FailedDownload();
-							Notify.Create( $"{mdlName}.mdl not found in url {mdlUrl}", Notify.NotifyType.Error );
+							Notify.Create( $"{mdlPath}.mdl not found in url {mdlPath}", Notify.NotifyType.Error );
 						}
 					}
-					catch
-					{
-						Notify.Create( $"{mdlPath}.mdl not found in url {mdlPath}", Notify.NotifyType.Error );
-					}
-
-					http.Dispose();
 				}
 			}
 
@@ -443,36 +441,35 @@ namespace MapParser
 					if ( !FileSystem.Data.FileExists( wavPath ) )
 					{
 						var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {wavUrl} )" );
-						var http = new Http( new Uri( $"{settings.baseUrl.Replace( "maps/", "" )}{wavUrl}" ) );
-
-						try
-						{
-							var data = await http.GetBytesAsync();
-
-							if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+						using ( var http = Sandbox.Http.RequestBytesAsync( $"{settings.baseUrl.Replace( "maps/", "" )}{wavUrl}" ) )
+						{ 
+							try
 							{
-								notify?.FinishDownload( $"Download successful ( {wavUrl} )" );
+								var data = await http;
 
-								if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( wavPath ) ) )
-									FileSystem.Data.CreateDirectory( Util.PathWithouthFile( wavPath ) );
+								if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+								{
+									notify?.FinishDownload( $"Download successful ( {wavUrl} )" );
 
-								var file = FileSystem.Data.OpenWrite( wavPath, FileMode.Create );
-								file.Write( data );
-								file.Close();
+									if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( wavPath ) ) )
+										FileSystem.Data.CreateDirectory( Util.PathWithouthFile( wavPath ) );
 
+									var file = FileSystem.Data.OpenWrite( wavPath, FileMode.Create );
+									file.Write( data );
+									file.Close();
+
+								}
+								else
+								{
+									notify?.FailedDownload();
+									Notify.Create( $"{wavName}.wav not found in url {wavUrl}", Notify.NotifyType.Error );
+								}
 							}
-							else
+							catch
 							{
-								notify?.FailedDownload();
-								Notify.Create( $"{wavName}.wav not found in url {wavUrl}", Notify.NotifyType.Error );
+								Notify.Create( $"{wavPath}.wav not found in url {wavPath}", Notify.NotifyType.Error );
 							}
 						}
-						catch
-						{
-							Notify.Create( $"{wavPath}.wav not found in url {wavPath}", Notify.NotifyType.Error );
-						}
-
-						http.Dispose();
 					}
 				}
 
@@ -489,44 +486,44 @@ namespace MapParser
 					if ( !FileSystem.Data.FileExists( wadPath ) )
 					{
 						var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {wadurl} )" );
-						var http = new Http( new Uri( $"{wadurl}" ) );
-
-						try
-						{
-							var data = await http.GetBytesAsync();
-
-							if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+						using ( var http = Sandbox.Http.RequestBytesAsync( $"{wadurl}" ) )
+						{ 
+							try
 							{
-								notify?.FinishDownload( $"Download successful ( {wadurl} )" );
-								FileSystem.Data.WriteAllText( wadPath, Convert.ToBase64String( data ) ); // don't have to convert to base64
-							}
-							else
-							{
-								notify?.FailedDownload();
-								Notify.Create( $"{wadName}.wad not found in url {wadurl}", Notify.NotifyType.Error );
+								var data = await http;
 
-								// Some wad filename has uppercase
-								http = new Http( new Uri( $"{wadurl.Replace( wadName, wadName.ToUpper() )}" ) );
-								try
+								if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
 								{
-									data = await http.GetBytesAsync();
-									if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
-									{
-										settings.wadUrls[i] = settings.wadUrls[i].Replace( wadName, wadName.ToUpper() );
-										i--;
-										http.Dispose();
-										continue;
+									notify?.FinishDownload( $"Download successful ( {wadurl} )" );
+									FileSystem.Data.WriteAllText( wadPath, Convert.ToBase64String( data ) ); // don't have to convert to base64
+								}
+								else
+								{
+									notify?.FailedDownload();
+									Notify.Create( $"{wadName}.wad not found in url {wadurl}", Notify.NotifyType.Error );
+
+									// Some wad filename has uppercase
+									using ( var http2 = Sandbox.Http.RequestBytesAsync( $"{wadurl.Replace( wadName, wadName.ToUpper() )}" ) )
+									{ 
+										try
+										{
+											data = await http2;
+											if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+											{
+												settings.wadUrls[i] = settings.wadUrls[i].Replace( wadName, wadName.ToUpper() );
+												i--;
+												continue;
+											}
+										}
+										catch { }
 									}
 								}
-								catch { }
+							}
+							catch
+							{
+								Notify.Create( $"{wadName}.wad not found in url {wadurl}", Notify.NotifyType.Error );
 							}
 						}
-						catch
-						{
-							Notify.Create( $"{wadName}.wad not found in url {wadurl}", Notify.NotifyType.Error );
-						}
-
-						http.Dispose();
 					}
 					settings.wadList.Add( $"{Util.PathToMapName( wadName )}.wad" );
 					settings.wadList = settings.wadList.Distinct().ToList();
@@ -572,32 +569,32 @@ namespace MapParser
 						if ( !FileSystem.Data.FileExists( skyPath ) )
 						{
 							var notify = DownloadNotification.CreateInfo( $"Downloading.. ( {skyurl} )" );
-							var http = new Http( new Uri( $"{skyurl}" ) );
-
-							try
-							{
-								var data = await http.GetBytesAsync();
-
-								if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( skyPath ) ) )
-									FileSystem.Data.CreateDirectory( Util.PathWithouthFile( skyPath ) );
-
-								if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+							using ( var http = Sandbox.Http.RequestBytesAsync( $"{skyurl}" ) )
+							{ 
+								try
 								{
-									notify?.FinishDownload( $"Download successful ( {skyurl} )" );
-									FileSystem.Data.WriteAllText( skyPath, Convert.ToBase64String( data ) );
+									var data = await http;
+
+									if ( !FileSystem.Data.DirectoryExists( Util.PathWithouthFile( skyPath ) ) )
+										FileSystem.Data.CreateDirectory( Util.PathWithouthFile( skyPath ) );
+
+									if ( Encoding.ASCII.GetString( data, 0, 4 ) != "<!DO" )
+									{
+										notify?.FinishDownload( $"Download successful ( {skyurl} )" );
+										FileSystem.Data.WriteAllText( skyPath, Convert.ToBase64String( data ) );
+									}
+									else
+									{
+										notify?.FailedDownload( $"Download failed ( {skyurl} )" );
+										Notify.Create( $"{skyName}.tga not found in url {skyurl}", Notify.NotifyType.Error );
+									}
 								}
-								else
+								catch
 								{
 									notify?.FailedDownload( $"Download failed ( {skyurl} )" );
-									Notify.Create( $"{skyName}.tga not found in url {skyurl}", Notify.NotifyType.Error );
 								}
-							}
-							catch
-							{
-								notify?.FailedDownload( $"Download failed ( {skyurl} )" );
-							}
 
-							http.Dispose();
+							}
 						}
 						if ( string.IsNullOrEmpty( settings.skyPath ) )
 							settings.skyPath = $"{Util.PathWithouthFile( skyPath )}\\{Util.PathWithouthFile( skyName )}";
