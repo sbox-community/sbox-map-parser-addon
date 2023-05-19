@@ -14,6 +14,7 @@ For now, only supported to GoldSrc. There are ~17k map you can spawn and play th
 Known issues;
 - Physical and walking animation issues on the spawned map
 - Some issues on physics collision and mesh rendering
+- Need HTTP request allowed for the mirrors [https://wiki.facepunch.com/sbox/http](https://wiki.facepunch.com/sbox/http)
 ___
 
 Possible updates;
